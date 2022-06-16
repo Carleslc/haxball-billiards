@@ -1,0 +1,3 @@
+pyyaml
+pyjson5
+clipboard

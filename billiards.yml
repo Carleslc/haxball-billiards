@@ -1,0 +1,82 @@
+# Configuration input for build-stadiums.py
+
+template: Billiard Template.hbst
+
+author: kslar
+
+stadiums:
+  - Billiard
+  - Billiard Practice
+  - Billiard Tournament
+  - Billiard Carambola
+
+variables:
+  defaults:
+    player-acceleration: 0.1
+    player-bCoef: 0.15
+    player-damping: 0.8
+    player-invMass: 20
+    player-kickStrength: 1250
+    player-kickingAcceleration: 0.36
+    player-kickingDamping: 0.9
+    player-radius: 18
+    ball-radius: 11
+    ball-bCoef: 0.92
+    ball-damping: 0.986
+    ball-invMass: 0.01
+    bg-color: 084e45
+    bgIndicator-color: b59978
+    bgTable-color: 2e1418
+    red-spawn: [-267, -89]
+    blue-spawn: [-267, 89]
+    kickOffReset: partial
+    kickoffLine-color: 085849
+    tableWall-bCoef: 0.5
+    tableWall-bias: -6
+    tableWall-color: '163433'
+    tableWallCorner-bCoef: 0.45
+    aim:
+    aim-joint:
+      d0: 0
+      d1: 16
+      bCoef: 0
+      color: ffffff
+      length: -1.0e-59
+      strength: 4.9e-06
+  
+  Billiard Practice:
+    bg-color: 2a5e52
+    bgTable-color: 3f261e
+    bgIndicator-color: b59978
+    tableWall-color: 084e45
+    kickoffLine-color: '085849'
+    kickOffReset: full
+    red-spawn: [-267, 0]
+    blue-spawn: [-311, 0]
+  
+  Billiard Tournament:
+    aim:
+      raw: '// '
+    bg-color: 066bb5
+    bgTable-color: '202831'
+    bgIndicator-color: fffff4
+    kickoffLine-color: 145e9e
+    tableWall-color: 145e9e
+    # tableWall-bCoef: 0.52
+
+  Billiard Carambola:
+    aim:
+      raw: '// '
+    ball-radius: 10
+    ball-invMass: 0.5
+    bg-color: 66202b
+    bgTable-color: 2e1418
+    bgIndicator-color: ffffe0
+    kickoffLine-color: 701e4e
+    tableWall-color: 50161c
+    # tableWall-bCoef: 0.65
+    tableWall-bias: -15
+    player-invMass: 500
+    player-kickStrength: 60
+    player-kickingAcceleration: 0.5
+    tableWall-bCoef: 0.65

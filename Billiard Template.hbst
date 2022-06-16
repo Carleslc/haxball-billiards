@@ -1,0 +1,745 @@
+// https://github.com/haxball/haxball-issues/wiki/Stadium-(.hbs)-File
+{
+  /* Map */
+  "name" : $name,
+
+  "canBeStored": true,
+
+  /**
+  12 foot Billiard
+  Outer: 388x209
+  Inner: 356x177
+  */
+  
+  // Camera
+  "width" : 388,
+  "height": 209,
+
+  "maxViewWidth": 1200,
+  "cameraWidth": 465,
+  "cameraHeight": 285,
+  "cameraFollow": "ball",
+
+  // Spawn
+  "spawnDistance": 267,
+  "redSpawnPoints": [
+    $red-spawn
+  ],
+  "blueSpawnPoints": [
+    $blue-spawn
+  ],
+
+  "kickOffReset": $kickOffReset,
+
+  // Background
+  "bg": { "width": 388, "height": 209, "type": "none", "cornerRadius": 24, "kickOffRadius": 0, "color": $bg-color },
+
+  // Players
+  /** invMass: The inverse of the mass, the closer to 0 the heavier this object is. 0 is static */
+  "playerPhysics": {
+    "radius": $player-radius,
+    "bCoef": $player-bCoef,
+    "invMass": $player-invMass,
+    "damping": $player-damping,
+    "acceleration": $player-acceleration,
+    "kickingAcceleration": $player-kickingAcceleration,
+    "kickingDamping": $player-kickingDamping,
+    "kickStrength": $player-kickStrength
+  },
+
+  // Main ball
+  "ballPhysics": "disc0",
+
+  // Physics & Configurations
+  "traits": {
+    "whiteBall": {
+      "radius": $ball-radius,
+      "bCoef": $ball-bCoef,
+      "invMass": $ball-invMass,
+      "damping": $ball-damping,
+      "color": "ffffe0",
+      "cMask": ["wall", "ball", "red", "blue", "c1", "c2", "c3"],
+      "cGroup": ["ball", "c0", "kick", "score"]
+    },
+    "redBall": {
+      "radius": $ball-radius,
+      "bCoef": $ball-bCoef,
+      "invMass": $ball-invMass,
+      "damping": $ball-damping,
+      "color": "e56e56",
+      "cMask": ["wall", "ball", "c0", "c1", "c2", "c3"],
+      "cGroup": ["ball", "c1"]
+    },
+    "blueBall": {
+      "radius": $ball-radius,
+      "bCoef": $ball-bCoef,
+      "invMass": $ball-invMass,
+      "damping": $ball-damping,
+      "color": "5689e5",
+      "cMask": ["wall", "ball", "c0", "c1", "c2", "c3"],
+      "cGroup": ["ball", "c2"]
+    },
+    "blackBall": {
+      "radius": $ball-radius,
+      "bCoef": $ball-bCoef,
+      "invMass": $ball-invMass,
+      "damping": $ball-damping,
+      "color": "181818",
+      "cMask": ["wall", "ball", "c0", "c1", "c2", "c3"],
+      "cGroup": ["ball", "c3", "score"]
+    },
+    "tableWall": {
+      "bCoef": $tableWall-bCoef,
+      "bias": $tableWall-bias,
+      "color": $tableWall-color,
+      "cMask": ["ball", "c0", "c1", "c2", "c3"],
+      "cGroup": ["wall"]
+    },
+    "tableWallCorner": {
+      "bCoef":$tableWallCorner-bCoef,
+      "color": $tableWall-color,
+      "cMask": ["ball", "c0", "c1", "c2", "c3"],
+      "cGroup": ["wall"]
+    },
+    "tableWallGoalInner": {
+      "vis": false,
+      "bCoef": -5,
+      "bias": -4,
+      "cMask": ["wall", "ball"],
+      "cGroup": ["wall"]
+    },
+    "kickoffLine": {
+      "vis": false,
+      "bCoef": 0.1,
+      "color": $kickoffLine-color,
+      "cMask": ["red", "blue"],
+      "cGroup": ["redKO", "blueKO"]
+    },
+    "bgTable": {
+      "vis": true,
+      "color": $bgTable-color,
+      "cMask": [],
+      "cGroup": ["wall"]
+    },
+    "bgHole": {
+      "radius": 20,
+      "color": "000000",
+      "cMask": [],
+      "cGroup": ["wall"]
+    },
+    "bgIndicator": {
+      "color": $bgIndicator-color,
+      "cMask": [],
+      "cGroup": ["wall"]
+    },
+    "playerBoundary": {
+      "vis": false,
+      "bCoef": 0.5,
+      "cMask": ["red", "blue"]
+    },
+    "ballBoundary": {
+      "vis": false,
+      "bCoef": 0,
+      "cMask": ["ball", "c1", "c2", "c3"]
+    },
+    "aimDisc": {
+      "radius": 66,
+      "invMass": 65000,
+      "pos": [-178, 0],
+      "color": "transparent",
+      "bCoef": 0,
+      "damping": 0,
+      "cMask": ["red", "blue"],
+      "cGroup": ["ball"]
+    }
+  },
+
+  // Boundaries
+  "planes": [
+    { "normal": [0, -1], "dist": -275, "trait": "playerBoundary" },
+    { "normal": [0, 1], "dist": -275, "trait": "playerBoundary" },
+    { "normal": [1, 0], "dist": -455, "trait": "playerBoundary" },
+    { "normal": [-1, 0], "dist": -455, "trait": "playerBoundary" },
+
+    { "normal": [0, -1], "dist": -275, "trait": "ballBoundary" },
+    { "normal": [0, 1], "dist": -275, "trait": "ballBoundary" },
+    { "normal": [1, 0], "dist": -455, "trait": "ballBoundary" },
+    { "normal": [-1, 0], "dist": -455, "trait": "ballBoundary" }
+  ],
+
+  "discs": [
+    // Balls
+    { "pos": [-178, 0], "trait": "whiteBall" },
+
+    { "pos": [178, 0], "trait": "redBall" },
+
+    { "pos": [198, -12], "trait": "blueBall" },
+    { "pos": [198, 12], "trait": "redBall" },
+
+    { "pos": [218, -24], "trait": "redBall" },
+    { "pos": [218, 0], "trait": "blackBall" },
+    { "pos": [218, 24], "trait": "blueBall"},
+
+    { "pos": [238, -36], "trait": "blueBall" },
+    { "pos": [238, -12], "trait": "redBall"},
+    { "pos": [238, 12], "trait": "blueBall"},
+    { "pos": [238, 36], "trait": "redBall" },
+
+    { "pos": [258, -48], "trait": "redBall" },
+    { "pos": [258, -24], "trait": "blueBall" },
+    { "pos": [258, 0], "trait": "blueBall"},
+    { "pos": [258, 24], "trait": "redBall" },
+    { "pos": [258, 48], "trait": "blueBall" },
+
+    // Aim
+    $aim{ "pos": [-178, 0], "trait": "aimDisc" },
+
+    // Table Holes
+    { "pos": [-364, -185], "trait": "bgHole" },
+    { "pos": [0, -202], "trait": "bgHole" },
+    { "pos": [364, -185], "trait": "bgHole" },
+    { "pos": [364, 185], "trait": "bgHole" },
+    { "pos": [0, 202], "trait": "bgHole" },
+    { "pos": [-364, 185], "trait": "bgHole" }
+  ],
+  
+  // Points
+  "vertexes": [
+    // Kickoff
+    /* 0 */ { "x": -178, "y": -177, "trait": "kickoffLine" },
+    /* 1 */ { "x": -178, "y": 177, "trait": "kickoffLine" },
+
+    // Background: Table border
+    // top
+    /* 2 */ { "x": -379, "y": -227, "trait": "bgTable" },
+    /* 3 */ { "x": 379, "y": -227, "trait": "bgTable" },
+    /* 4 */ { "x": -385, "y": -225, "trait": "bgTable" },
+    /* 5 */ { "x": 385, "y": -225, "trait": "bgTable" },
+    /* 6 */ { "x": -390, "y": -223, "trait": "bgTable" },
+    /* 7 */ { "x": 390, "y": -223, "trait": "bgTable" },
+    /* 8 */ { "x": -393, "y": -221, "trait": "bgTable" },
+    /* 9 */ { "x": 393, "y": -221, "trait": "bgTable" },
+    /* 10 */ { "x": -395, "y": -219, "trait": "bgTable" },
+    /* 11 */ { "x": 395, "y": -219, "trait": "bgTable" },
+    /* 12 */ { "x": -397, "y": -217, "trait": "bgTable" },
+    /* 13 */ { "x": 397, "y": -217, "trait": "bgTable" },
+    /* 14 */ { "x": -399, "y": -215, "trait": "bgTable" },
+    /* 15 */ { "x": 399, "y": -215, "trait": "bgTable" },
+    /* 16 */ { "x": -401, "y": -213, "trait": "bgTable" },
+    /* 17 */ { "x": 401, "y": -213, "trait": "bgTable" },
+    /* 18 */ { "x": -403, "y": -211, "trait": "bgTable" },
+    /* 19 */ { "x": 403, "y": -211, "trait": "bgTable" },
+    /* 20 */ { "x": -403, "y": -209, "trait": "bgTable" },
+    /* 21 */ { "x": 403, "y": -209, "trait": "bgTable" },
+    /* 22 */ { "x": -404, "y": -207, "trait": "bgTable" },
+    /* 23 */ { "x": 404, "y": -207, "trait": "bgTable" },
+    /* 24 */ { "x": -404, "y": -205, "trait": "bgTable" },
+    /* 25 */ { "x": 404, "y": -205, "trait": "bgTable" },
+    /* 26 */ { "x": -404, "y": -203, "trait": "bgTable" },
+    /* 27 */ { "x": 404, "y": -203, "trait": "bgTable" },
+    /* 28 */ { "x": -405, "y": -201, "trait": "bgTable" },
+    /* 29 */ { "x": 405, "y": -201, "trait": "bgTable" },
+    /* 30 */ { "x": -405, "y": -199, "trait": "bgTable" },
+    /* 31 */ { "x": 405, "y": -199, "trait": "bgTable" },
+    /* 32 */ { "x": -405, "y": -197, "trait": "bgTable" },
+    /* 33 */ { "x": 405, "y": -197, "trait": "bgTable" },
+    /* 34 */ { "x": -406, "y": -195, "trait": "bgTable" },
+    /* 35 */ { "x": 406, "y": -195, "trait": "bgTable" },
+    /* 36 */ { "x": -406, "y": -193, "trait": "bgTable" },
+    /* 37 */ { "x": 406, "y": -193, "trait": "bgTable" },
+    /* 38 */ { "x": -406, "y": -191, "trait": "bgTable" },
+    /* 39 */ { "x": 406, "y": -191, "trait": "bgTable" },
+
+    // bottom
+    /* 40 */ { "x": -379, "y": 227, "trait": "bgTable" },
+    /* 41 */ { "x": 379, "y": 227, "trait": "bgTable" },
+    /* 42 */ { "x": -385, "y": 225, "trait": "bgTable" },
+    /* 43 */ { "x": 385, "y": 225, "trait": "bgTable" },
+    /* 44 */ { "x": -390, "y": 223, "trait": "bgTable" },
+    /* 45 */ { "x": 390, "y": 223, "trait": "bgTable" },
+    /* 46 */ { "x": -393, "y": 221, "trait": "bgTable" },
+    /* 47 */ { "x": 393, "y": 221, "trait": "bgTable" },
+    /* 48 */ { "x": -395, "y": 219, "trait": "bgTable" },
+    /* 49 */ { "x": 395, "y": 219, "trait": "bgTable" },
+    /* 50 */ { "x": -397, "y": 217, "trait": "bgTable" },
+    /* 51 */ { "x": 397, "y": 217, "trait": "bgTable" },
+    /* 52 */ { "x": -399, "y": 215, "trait": "bgTable" },
+    /* 53 */ { "x": 399, "y": 215, "trait": "bgTable" },
+    /* 54 */ { "x": -401, "y": 213, "trait": "bgTable" },
+    /* 55 */ { "x": 401, "y": 213, "trait": "bgTable" },
+    /* 56 */ { "x": -403, "y": 211, "trait": "bgTable" },
+    /* 57 */ { "x": 403, "y": 211, "trait": "bgTable" },
+    /* 58 */ { "x": -403, "y": 209, "trait": "bgTable" },
+    /* 59 */ { "x": 403, "y": 209, "trait": "bgTable" },
+    /* 60 */ { "x": -404, "y": 207, "trait": "bgTable" },
+    /* 61 */ { "x": 404, "y": 207, "trait": "bgTable" },
+    /* 62 */ { "x": -404, "y": 205, "trait": "bgTable" },
+    /* 63 */ { "x": 404, "y": 205, "trait": "bgTable" },
+    /* 64 */ { "x": -404, "y": 203, "trait": "bgTable" },
+    /* 65 */ { "x": 404, "y": 203, "trait": "bgTable" },
+    /* 66 */ { "x": -405, "y": 201, "trait": "bgTable" },
+    /* 67 */ { "x": 405, "y": 201, "trait": "bgTable" },
+    /* 68 */ { "x": -405, "y": 199, "trait": "bgTable" },
+    /* 69 */ { "x": 405, "y": 199, "trait": "bgTable" },
+    /* 70 */ { "x": -405, "y": 197, "trait": "bgTable" },
+    /* 71 */ { "x": 405, "y": 197, "trait": "bgTable" },
+    /* 72 */ { "x": -406, "y": 195, "trait": "bgTable" },
+    /* 73 */ { "x": 406, "y": 195, "trait": "bgTable" },
+    /* 74 */ { "x": -406, "y": 193, "trait": "bgTable" },
+    /* 75 */ { "x": 406, "y": 193, "trait": "bgTable" },
+    /* 76 */ { "x": -406, "y": 191, "trait": "bgTable" },
+    /* 77 */ { "x": 406, "y": 191, "trait": "bgTable" },
+
+    // left
+    /* 78 */ { "x": -404, "y": -191, "trait": "bgTable" },
+    /* 79 */ { "x": -404, "y": 191, "trait": "bgTable" },
+    /* 80 */ { "x": -402, "y": -191, "trait": "bgTable" },
+    /* 81 */ { "x": -402, "y": 191, "trait": "bgTable" },
+    /* 82 */ { "x": -400, "y": -191, "trait": "bgTable" },
+    /* 83 */ { "x": -400, "y": 191, "trait": "bgTable" },
+    /* 84 */ { "x": -398, "y": -191, "trait": "bgTable" },
+    /* 85 */ { "x": -398, "y": 191, "trait": "bgTable" },
+    /* 86 */ { "x": -396, "y": -191, "trait": "bgTable" },
+    /* 87 */ { "x": -396, "y": 191, "trait": "bgTable" },
+    /* 88 */ { "x": -394, "y": -191, "trait": "bgTable" },
+    /* 89 */ { "x": -394, "y": 191, "trait": "bgTable" },
+    /* 90 */ { "x": -392, "y": -191, "trait": "bgTable" },
+    /* 91 */ { "x": -392, "y": 191, "trait": "bgTable" },
+    /* 92 */ { "x": -390, "y": -191, "trait": "bgTable" },
+    /* 93 */ { "x": -390, "y": 191, "trait": "bgTable" },
+    /* 94 */ { "x": -388, "y": -191, "trait": "bgTable" },
+    /* 95 */ { "x": -388, "y": 191, "trait": "bgTable" },
+    /* 96 */ { "x": -386, "y": -191, "trait": "bgTable" },
+    /* 97 */ { "x": -386, "y": 191, "trait": "bgTable" },
+    /* 98 */ { "x": -384, "y": -191, "trait": "bgTable" },
+    /* 99 */ { "x": -384, "y": 191, "trait": "bgTable" },
+    /* 100 */ { "x": -382, "y": -191, "trait": "bgTable" },
+    /* 101 */ { "x": -382, "y": 191, "trait": "bgTable" },
+    /* 102 */ { "x": -380, "y": -191, "trait": "bgTable" },
+    /* 103 */ { "x": -380, "y": 191, "trait": "bgTable" },
+    /* 104 */ { "x": -379, "y": -191, "trait": "bgTable" },
+    /* 105 */ { "x": -379, "y": 191, "trait": "bgTable" },
+    /* 106 */ { "x": -378, "y": -191, "trait": "bgTable" },
+    /* 107 */ { "x": -378, "y": 191, "trait": "bgTable" },
+    /* 108 */ { "x": -376, "y": -191, "trait": "bgTable" },
+    /* 109 */ { "x": -376, "y": 191, "trait": "bgTable" },
+    /* 110 */ { "x": -374, "y": -191, "trait": "bgTable" },
+    /* 111 */ { "x": -374, "y": 191, "trait": "bgTable" },
+    /* 112 */ { "x": -372, "y": -191, "trait": "bgTable" },
+    /* 113 */ { "x": -372, "y": 191, "trait": "bgTable" },
+    /* 114 */ { "x": -370, "y": -191, "trait": "bgTable" },
+    /* 115 */ { "x": -370, "y": 191, "trait": "bgTable" },
+
+    // right
+    /* 116 */ { "x": 404, "y": -191, "trait": "bgTable" },
+    /* 117 */ { "x": 404, "y": 191, "trait": "bgTable" },
+    /* 118 */ { "x": 402, "y": -191, "trait": "bgTable" },
+    /* 119 */ { "x": 402, "y": 191, "trait": "bgTable" },
+    /* 120 */ { "x": 400, "y": -191, "trait": "bgTable" },
+    /* 121 */ { "x": 400, "y": 191, "trait": "bgTable" },
+    /* 122 */ { "x": 398, "y": -191, "trait": "bgTable" },
+    /* 123 */ { "x": 398, "y": 191, "trait": "bgTable" },
+    /* 124 */ { "x": 396, "y": -191, "trait": "bgTable" },
+    /* 125 */ { "x": 396, "y": 191, "trait": "bgTable" },
+    /* 126 */ { "x": 394, "y": -191, "trait": "bgTable" },
+    /* 127 */ { "x": 394, "y": 191, "trait": "bgTable" },
+    /* 128 */ { "x": 392, "y": -191, "trait": "bgTable" },
+    /* 129 */ { "x": 392, "y": 191, "trait": "bgTable" },
+    /* 130 */ { "x": 390, "y": -191, "trait": "bgTable" },
+    /* 131 */ { "x": 390, "y": 191, "trait": "bgTable" },
+    /* 132 */ { "x": 388, "y": -191, "trait": "bgTable" },
+    /* 133 */ { "x": 388, "y": 191, "trait": "bgTable" },
+    /* 134 */ { "x": 386, "y": -191, "trait": "bgTable" },
+    /* 135 */ { "x": 386, "y": 191, "trait": "bgTable" },
+    /* 136 */ { "x": 384, "y": -191, "trait": "bgTable" },
+    /* 137 */ { "x": 384, "y": 191, "trait": "bgTable" },
+    /* 138 */ { "x": 382, "y": -191, "trait": "bgTable" },
+    /* 139 */ { "x": 382, "y": 191, "trait": "bgTable" },
+    /* 140 */ { "x": 380, "y": -191, "trait": "bgTable" },
+    /* 141 */ { "x": 380, "y": 191, "trait": "bgTable" },
+    /* 142 */ { "x": 379, "y": -191, "trait": "bgTable" },
+    /* 143 */ { "x": 379, "y": 191, "trait": "bgTable" },
+    /* 144 */ { "x": 378, "y": -191, "trait": "bgTable" },
+    /* 145 */ { "x": 378, "y": 191, "trait": "bgTable" },
+    /* 146 */ { "x": 376, "y": -191, "trait": "bgTable" },
+    /* 147 */ { "x": 376, "y": 191, "trait": "bgTable" },
+    /* 148 */ { "x": 374, "y": -191, "trait": "bgTable" },
+    /* 149 */ { "x": 374, "y": 191, "trait": "bgTable" },
+    /* 150 */ { "x": 372, "y": -191, "trait": "bgTable" },
+    /* 151 */ { "x": 372, "y": 191, "trait": "bgTable" },
+    /* 152 */ { "x": 370, "y": -191, "trait": "bgTable" },
+    /* 153 */ { "x": 370, "y": 191, "trait": "bgTable" },
+
+    // Playing area: Table border
+    /* 154 */ { "x": -356, "y": -151, "trait": "tableWall" },
+    /* 155 */ { "x": -328, "y": -177, "trait": "tableWall" },
+    /* 156 */ { "x": -24, "y": -177, "trait": "tableWall" },
+    /* 157 */ { "x": 24, "y": -177, "trait": "tableWall" },
+    /* 158 */ { "x": 328, "y": -177, "trait": "tableWall" },
+    /* 159 */ { "x": 356, "y": -151, "trait": "tableWall" },
+    /* 160 */ { "x": 356, "y": 151, "trait": "tableWall" },
+    /* 161 */ { "x": 328, "y": 177, "trait": "tableWall" },
+    /* 162 */ { "x": 24, "y": 177, "trait": "tableWall" },
+    /* 163 */ { "x": -24, "y": 177, "trait": "tableWall" },
+    /* 164 */ { "x": -328, "y": 177, "trait": "tableWall" },
+    /* 165 */ { "x": -356, "y": 151, "trait": "tableWall" },
+
+    // Table pockets (corners & lateral pits)
+    /* 166 */ { "x": -374, "y": -169, "trait": "tableWallCorner" },
+    /* 167 */ { "x": -346, "y": -193, "trait": "tableWallCorner" },
+    /* 168 */ { "x": -16, "y": -193, "trait": "tableWallCorner" },
+    /* 169 */ { "x": 16, "y": -193, "trait": "tableWallCorner" },
+    /* 170 */ { "x": 346, "y": -193, "trait": "tableWallCorner" },
+    /* 171 */ { "x": 374, "y": -169, "trait": "tableWallCorner" },
+    /* 172 */ { "x": 374, "y": 169, "trait": "tableWallCorner" },
+    /* 173 */ { "x": 346, "y": 193, "trait": "tableWallCorner" },
+    /* 174 */ { "x": 16, "y": 193, "trait": "tableWallCorner" },
+    /* 175 */ { "x": -16, "y": 193, "trait": "tableWallCorner" },
+    /* 176 */ { "x": -346, "y": 193, "trait": "tableWallCorner" },
+    /* 177 */ { "x": -374, "y": 169, "trait": "tableWallCorner" },
+
+    // Background: Table indicators
+    // top
+    /* 178 */ { "x": -180, "y": -209, "trait": "bgIndicator" },
+    /* 179 */ { "x": -178, "y": -211, "trait": "bgIndicator" },
+    /* 180 */ { "x": -176, "y": -209, "trait": "bgIndicator" },
+    /* 181 */ { "x": -178, "y": -207, "trait": "bgIndicator" },
+
+    /* 182 */ { "x": -269, "y": -209, "trait": "bgIndicator" },
+    /* 183 */ { "x": -267, "y": -211, "trait": "bgIndicator" },
+    /* 184 */ { "x": -265, "y": -209, "trait": "bgIndicator" },
+    /* 185 */ { "x": -267, "y": -207, "trait": "bgIndicator" },
+
+    /* 186 */ { "x": -90, "y": -209, "trait": "bgIndicator" },
+    /* 187 */ { "x": -88, "y": -211, "trait": "bgIndicator" },
+    /* 188 */ { "x": -86, "y": -209, "trait": "bgIndicator" },
+    /* 189 */ { "x": -88, "y": -207, "trait": "bgIndicator" },
+
+    /* 190 */ { "x": 180, "y": -209, "trait": "bgIndicator" },
+    /* 191 */ { "x": 178, "y": -211, "trait": "bgIndicator" },
+    /* 192 */ { "x": 176, "y": -209, "trait": "bgIndicator" },
+    /* 193 */ { "x": 178, "y": -207, "trait": "bgIndicator" },
+
+    /* 194 */ { "x": 90, "y": -209, "trait": "bgIndicator" },
+    /* 195 */ { "x": 88, "y": -211, "trait": "bgIndicator" },
+    /* 196 */ { "x": 86, "y": -209, "trait": "bgIndicator" },
+    /* 197 */ { "x": 88, "y": -207, "trait": "bgIndicator" },
+
+    /* 198 */ { "x": 269, "y": -209, "trait": "bgIndicator" },
+    /* 199 */ { "x": 267, "y": -211, "trait": "bgIndicator" },
+    /* 200 */ { "x": 265, "y": -209, "trait": "bgIndicator" },
+    /* 201 */ { "x": 267, "y": -207, "trait": "bgIndicator" },
+
+    // right
+    /* 202 */ { "x": 383, "y": 0, "trait": "bgIndicator" },
+    /* 203 */ { "x": 385, "y": 2, "trait": "bgIndicator" },
+    /* 204 */ { "x": 387, "y": 0, "trait": "bgIndicator" },
+    /* 205 */ { "x": 385, "y": -2, "trait": "bgIndicator" },
+
+    /* 206 */ { "x": 383, "y": -88, "trait": "bgIndicator" },
+    /* 207 */ { "x": 385, "y": -90, "trait": "bgIndicator" },
+    /* 208 */ { "x": 387, "y": -88, "trait": "bgIndicator" },
+    /* 209 */ { "x": 385, "y": -86, "trait": "bgIndicator" },
+
+    /* 210 */ { "x": 383, "y": 88, "trait": "bgIndicator" },
+    /* 211 */ { "x": 385, "y": 90, "trait": "bgIndicator" },
+    /* 212 */ { "x": 387, "y": 88, "trait": "bgIndicator" },
+    /* 213 */ { "x": 385, "y": 86, "trait": "bgIndicator" },
+
+    // bottom
+    /* 214 */ { "x": -180, "y": 209, "trait": "bgIndicator" },
+    /* 215 */ { "x": -178, "y": 211, "trait": "bgIndicator" },
+    /* 216 */ { "x": -176, "y": 209, "trait": "bgIndicator" },
+    /* 217 */ { "x": -178, "y": 207, "trait": "bgIndicator" },
+
+    /* 218 */ { "x": -269, "y": 209, "trait": "bgIndicator" },
+    /* 219 */ { "x": -267, "y": 211, "trait": "bgIndicator" },
+    /* 220 */ { "x": -265, "y": 209, "trait": "bgIndicator" },
+    /* 221 */ { "x": -267, "y": 207, "trait": "bgIndicator" },
+
+    /* 222 */ { "x": -90, "y": 209, "trait": "bgIndicator" },
+    /* 223 */ { "x": -88, "y": 211, "trait": "bgIndicator" },
+    /* 224 */ { "x": -86, "y": 209, "trait": "bgIndicator" },
+    /* 225 */ { "x": -88, "y": 207, "trait": "bgIndicator" },
+
+    /* 226 */ { "x": 180, "y": 209, "trait": "bgIndicator" },
+    /* 227 */ { "x": 178, "y": 211, "trait": "bgIndicator" },
+    /* 228 */ { "x": 176, "y": 209, "trait": "bgIndicator" },
+    /* 229 */ { "x": 178, "y": 207, "trait": "bgIndicator" },
+
+    /* 230 */ { "x": 90, "y": 209, "trait": "bgIndicator" },
+    /* 231 */ { "x": 88, "y": 211, "trait": "bgIndicator" },
+    /* 232 */ { "x": 86, "y": 209, "trait": "bgIndicator" },
+    /* 233 */ { "x": 88, "y": 207, "trait": "bgIndicator" },
+
+    /* 234 */ { "x": 269, "y": 209, "trait": "bgIndicator" },
+    /* 235 */ { "x": 267, "y": 211, "trait": "bgIndicator" },
+    /* 236 */ { "x": 265, "y": 209, "trait": "bgIndicator" },
+    /* 237 */ { "x": 267, "y": 207, "trait": "bgIndicator" },
+
+    // left
+    /* 238 */ { "x": -383, "y": 0, "trait": "bgIndicator" },
+    /* 239 */ { "x": -385, "y": 2, "trait": "bgIndicator" },
+    /* 240 */ { "x": -387, "y": 0, "trait": "bgIndicator" },
+    /* 241 */ { "x": -385, "y": -2, "trait": "bgIndicator" },
+
+    /* 242 */ { "x": -383, "y": -88, "trait": "bgIndicator" },
+    /* 243 */ { "x": -385, "y": -90, "trait": "bgIndicator" },
+    /* 244 */ { "x": -387, "y": -88, "trait": "bgIndicator" },
+    /* 245 */ { "x": -385, "y": -86, "trait": "bgIndicator" },
+
+    /* 246 */ { "x": -383, "y": 88, "trait": "bgIndicator" },
+    /* 247 */ { "x": -385, "y": 90, "trait": "bgIndicator" },
+    /* 248 */ { "x": -387, "y": 88, "trait": "bgIndicator" },
+    /* 249 */ { "x": -385, "y": 86, "trait": "bgIndicator" }
+  ],
+
+  // Lines
+  /** bCoef: (coefficient of restitution [e]) Bouncing coefficient. Indicates bouncing strength. Sign indicates the bounce direction of the ball. */
+  "segments": [
+    // Kickoff
+    { "v0": 0, "v1": 1, "trait": "kickoffLine" },
+
+    // Background: Table border
+    // top
+    { "v0": 2, "v1": 3, "trait": "bgTable" },
+    { "v0": 4, "v1": 5, "trait": "bgTable" },
+    { "v0": 6, "v1": 7, "trait": "bgTable" },
+    { "v0": 8, "v1": 9, "trait": "bgTable" },
+    { "v0": 10, "v1": 11, "trait": "bgTable" },
+    { "v0": 12, "v1": 13, "trait": "bgTable" },
+    { "v0": 14, "v1": 15, "trait": "bgTable" },
+    { "v0": 16, "v1": 17, "trait": "bgTable" },
+    { "v0": 18, "v1": 19, "trait": "bgTable" },
+    { "v0": 20, "v1": 21, "trait": "bgTable" },
+    { "v0": 22, "v1": 23, "trait": "bgTable" },
+    { "v0": 24, "v1": 25, "trait": "bgTable" },
+    { "v0": 26, "v1": 27, "trait": "bgTable" },
+    { "v0": 28, "v1": 29, "trait": "bgTable" },
+    { "v0": 26, "v1": 27, "trait": "bgTable" },
+    { "v0": 28, "v1": 29, "trait": "bgTable" },
+    { "v0": 30, "v1": 31, "trait": "bgTable" },
+    { "v0": 32, "v1": 33, "trait": "bgTable" },
+    { "v0": 34, "v1": 35, "trait": "bgTable" },
+    { "v0": 36, "v1": 37, "trait": "bgTable" },
+    { "v0": 38, "v1": 39, "trait": "bgTable" },
+
+    { "v0": 38, "v1": 2, "curve": 90, "trait": "bgTable" },
+    { "v0": 39, "v1": 3, "curve": -90, "trait": "bgTable" },
+    
+    // bottom
+    { "v0": 40, "v1": 41, "trait": "bgTable" },
+    { "v0": 42, "v1": 43, "trait": "bgTable" },
+    { "v0": 44, "v1": 45, "trait": "bgTable" },
+    { "v0": 46, "v1": 47, "trait": "bgTable" },
+    { "v0": 48, "v1": 49, "trait": "bgTable" },
+    { "v0": 50, "v1": 51, "trait": "bgTable" },
+    { "v0": 52, "v1": 53, "trait": "bgTable" },
+    { "v0": 54, "v1": 55, "trait": "bgTable" },
+    { "v0": 56, "v1": 57, "trait": "bgTable" },
+    { "v0": 58, "v1": 59, "trait": "bgTable" },
+    { "v0": 60, "v1": 61, "trait": "bgTable" },
+    { "v0": 62, "v1": 63, "trait": "bgTable" },
+    { "v0": 64, "v1": 65, "trait": "bgTable" },
+    { "v0": 66, "v1": 67, "trait": "bgTable" },
+    { "v0": 68, "v1": 69, "trait": "bgTable" },
+    { "v0": 70, "v1": 71, "trait": "bgTable" },
+    { "v0": 72, "v1": 73, "trait": "bgTable" },
+    { "v0": 74, "v1": 75, "trait": "bgTable" },
+    { "v0": 76, "v1": 77, "trait": "bgTable" },
+    
+    { "v0": 76, "v1": 40, "curve": -90, "trait": "bgTable" },
+    { "v0": 77, "v1": 41, "curve": 90, "trait": "bgTable" },
+
+    // left
+    { "v0": 38, "v1": 76, "trait": "bgTable" },
+    { "v0": 78, "v1": 79, "trait": "bgTable" },
+    { "v0": 80, "v1": 81, "trait": "bgTable" },
+    { "v0": 82, "v1": 83, "trait": "bgTable" },
+    { "v0": 84, "v1": 85, "trait": "bgTable" },
+    { "v0": 86, "v1": 87, "trait": "bgTable" },
+    { "v0": 88, "v1": 89, "trait": "bgTable" },
+    { "v0": 90, "v1": 91, "trait": "bgTable" },
+    { "v0": 92, "v1": 93, "trait": "bgTable" },
+    { "v0": 94, "v1": 95, "trait": "bgTable" },
+    { "v0": 96, "v1": 97, "trait": "bgTable" },
+    { "v0": 98, "v1": 99, "trait": "bgTable" },
+    { "v0": 100, "v1": 101, "trait": "bgTable" },
+    { "v0": 102, "v1": 103, "trait": "bgTable" },
+    { "v0": 104, "v1": 105, "trait": "bgTable" },
+    { "v0": 106, "v1": 107, "trait": "bgTable" },
+    { "v0": 108, "v1": 109, "trait": "bgTable" },
+    { "v0": 110, "v1": 111, "trait": "bgTable" },
+    { "v0": 112, "v1": 113, "trait": "bgTable" },
+    { "v0": 114, "v1": 115, "trait": "bgTable" },
+
+    // right
+    { "v0": 39, "v1": 77, "trait": "bgTable" },
+    { "v0": 116, "v1": 117, "trait": "bgTable" },
+    { "v0": 118, "v1": 119, "trait": "bgTable" },
+    { "v0": 120, "v1": 121, "trait": "bgTable" },
+    { "v0": 122, "v1": 123, "trait": "bgTable" },
+    { "v0": 124, "v1": 125, "trait": "bgTable" },
+    { "v0": 126, "v1": 127, "trait": "bgTable" },
+    { "v0": 128, "v1": 129, "trait": "bgTable" },
+    { "v0": 130, "v1": 131, "trait": "bgTable" },
+    { "v0": 132, "v1": 133, "trait": "bgTable" },
+    { "v0": 134, "v1": 135, "trait": "bgTable" },
+    { "v0": 136, "v1": 137, "trait": "bgTable" },
+    { "v0": 138, "v1": 139, "trait": "bgTable" },
+    { "v0": 140, "v1": 141, "trait": "bgTable" },
+    { "v0": 142, "v1": 143, "trait": "bgTable" },
+    { "v0": 144, "v1": 145, "trait": "bgTable" },
+    { "v0": 146, "v1": 147, "trait": "bgTable" },
+    { "v0": 148, "v1": 149, "trait": "bgTable" },
+    { "v0": 150, "v1": 151, "trait": "bgTable" },
+    { "v0": 152, "v1": 153, "trait": "bgTable" },
+
+    // Playing area: Table border
+    { "v0": 155, "v1": 156, "trait": "tableWall" },
+    { "v0": 157, "v1": 158, "trait": "tableWall" },
+    { "v0": 159, "v1": 160, "trait": "tableWall" },
+    { "v0": 161, "v1": 162, "trait": "tableWall" },
+    { "v0": 163, "v1": 164, "trait": "tableWall" },
+    { "v0": 165, "v1": 154, "trait": "tableWall" },
+
+    // Table pockets (corners & lateral pits)
+    { "v0": 154, "v1": 166, "trait": "tableWallCorner" },
+    { "v0": 155, "v1": 167, "trait": "tableWallCorner" },
+    { "v0": 156, "v1": 168, "trait": "tableWallCorner" },
+    { "v0": 157, "v1": 169, "trait": "tableWallCorner" },
+    { "v0": 158, "v1": 170, "trait": "tableWallCorner" },
+    { "v0": 159, "v1": 171, "trait": "tableWallCorner" },
+    { "v0": 160, "v1": 172, "trait": "tableWallCorner" },
+    { "v0": 161, "v1": 173, "trait": "tableWallCorner" },
+    { "v0": 162, "v1": 174, "trait": "tableWallCorner" },
+    { "v0": 163, "v1": 175, "trait": "tableWallCorner" },
+    { "v0": 164, "v1": 176, "trait": "tableWallCorner" },
+    { "v0": 165, "v1": 177, "trait": "tableWallCorner" },
+
+    { "v0": 166, "v1": 167, "curve": -90, "trait": "tableWallGoalInner" },
+    { "v0": 168, "v1": 169, "curve": -30, "trait": "tableWallGoalInner" },
+    { "v0": 170, "v1": 171, "curve": -90, "trait": "tableWallGoalInner" },
+    { "v0": 172, "v1": 173, "curve": -90, "trait": "tableWallGoalInner" },
+    { "v0": 174, "v1": 175, "curve": -30, "trait": "tableWallGoalInner" },
+    { "v0": 176, "v1": 177, "curve": -90, "trait": "tableWallGoalInner" },
+
+    // Background: Table indicators
+    // top
+    { "v0": 178, "v1": 179, "trait": "bgIndicator" },
+    { "v0": 179, "v1": 180, "trait": "bgIndicator" },
+    { "v0": 180, "v1": 181, "trait": "bgIndicator" },
+    { "v0": 181, "v1": 178, "trait": "bgIndicator" },
+
+    { "v0": 182, "v1": 183, "trait": "bgIndicator" },
+    { "v0": 183, "v1": 184, "trait": "bgIndicator" },
+    { "v0": 184, "v1": 185, "trait": "bgIndicator" },
+    { "v0": 185, "v1": 182, "trait": "bgIndicator" },
+
+    { "v0": 186, "v1": 187, "trait": "bgIndicator" },
+    { "v0": 187, "v1": 188, "trait": "bgIndicator" },
+    { "v0": 188, "v1": 189, "trait": "bgIndicator" },
+    { "v0": 189, "v1": 186, "trait": "bgIndicator" },
+
+    { "v0": 190, "v1": 191, "trait": "bgIndicator" },
+    { "v0": 191, "v1": 192, "trait": "bgIndicator" },
+    { "v0": 192, "v1": 193, "trait": "bgIndicator" },
+    { "v0": 193, "v1": 190, "trait": "bgIndicator" },
+
+    { "v0": 194, "v1": 195, "trait": "bgIndicator" },
+    { "v0": 195, "v1": 196, "trait": "bgIndicator" },
+    { "v0": 196, "v1": 197, "trait": "bgIndicator" },
+    { "v0": 197, "v1": 194, "trait": "bgIndicator" },
+
+    { "v0": 198, "v1": 199, "trait": "bgIndicator" },
+    { "v0": 199, "v1": 200, "trait": "bgIndicator" },
+    { "v0": 200, "v1": 201, "trait": "bgIndicator" },
+    { "v0": 201, "v1": 198, "trait": "bgIndicator" },
+
+    // right
+    { "v0": 202, "v1": 203, "trait": "bgIndicator" },
+    { "v0": 203, "v1": 204, "trait": "bgIndicator" },
+    { "v0": 204, "v1": 205, "trait": "bgIndicator" },
+    { "v0": 205, "v1": 202, "trait": "bgIndicator" },
+
+    { "v0": 206, "v1": 207, "trait": "bgIndicator" },
+    { "v0": 207, "v1": 208, "trait": "bgIndicator" },
+    { "v0": 208, "v1": 209, "trait": "bgIndicator" },
+    { "v0": 209, "v1": 206, "trait": "bgIndicator" },
+
+    { "v0": 210, "v1": 211, "trait": "bgIndicator" },
+    { "v0": 211, "v1": 212, "trait": "bgIndicator" },
+    { "v0": 212, "v1": 213, "trait": "bgIndicator" },
+    { "v0": 213, "v1": 210, "trait": "bgIndicator" },
+
+    // bottom
+    { "v0": 214, "v1": 215, "trait": "bgIndicator" },
+    { "v0": 215, "v1": 216, "trait": "bgIndicator" },
+    { "v0": 216, "v1": 217, "trait": "bgIndicator" },
+    { "v0": 217, "v1": 214, "trait": "bgIndicator" },
+
+    { "v0": 218, "v1": 219, "trait": "bgIndicator" },
+    { "v0": 219, "v1": 220, "trait": "bgIndicator" },
+    { "v0": 220, "v1": 221, "trait": "bgIndicator" },
+    { "v0": 221, "v1": 218, "trait": "bgIndicator" },
+
+    { "v0": 222, "v1": 223, "trait": "bgIndicator" },
+    { "v0": 223, "v1": 224, "trait": "bgIndicator" },
+    { "v0": 224, "v1": 225, "trait": "bgIndicator" },
+    { "v0": 225, "v1": 222, "trait": "bgIndicator" },
+
+    { "v0": 226, "v1": 227, "trait": "bgIndicator" },
+    { "v0": 227, "v1": 228, "trait": "bgIndicator" },
+    { "v0": 228, "v1": 229, "trait": "bgIndicator" },
+    { "v0": 229, "v1": 226, "trait": "bgIndicator" },
+
+    { "v0": 230, "v1": 231, "trait": "bgIndicator" },
+    { "v0": 231, "v1": 232, "trait": "bgIndicator" },
+    { "v0": 232, "v1": 233, "trait": "bgIndicator" },
+    { "v0": 233, "v1": 230, "trait": "bgIndicator" },
+
+    { "v0": 234, "v1": 235, "trait": "bgIndicator" },
+    { "v0": 235, "v1": 236, "trait": "bgIndicator" },
+    { "v0": 236, "v1": 237, "trait": "bgIndicator" },
+    { "v0": 237, "v1": 234, "trait": "bgIndicator" },
+
+    // left
+    { "v0": 238, "v1": 239, "trait": "bgIndicator" },
+    { "v0": 239, "v1": 240, "trait": "bgIndicator" },
+    { "v0": 240, "v1": 241, "trait": "bgIndicator" },
+    { "v0": 241, "v1": 238, "trait": "bgIndicator" },
+
+    { "v0": 242, "v1": 243, "trait": "bgIndicator" },
+    { "v0": 243, "v1": 244, "trait": "bgIndicator" },
+    { "v0": 244, "v1": 245, "trait": "bgIndicator" },
+    { "v0": 245, "v1": 242, "trait": "bgIndicator" },
+
+    { "v0": 246, "v1": 247, "trait": "bgIndicator" },
+    { "v0": 247, "v1": 248, "trait": "bgIndicator" },
+    { "v0": 248, "v1": 249, "trait": "bgIndicator" },
+    { "v0": 249, "v1": 246, "trait": "bgIndicator" }
+  ],
+
+  // Goals
+  "goals": [
+    // Borders
+    { "p0": [-385, -210], "p1": [385, -210], "team": "red" },
+    { "p0": [385, -210], "p1": [385, 210], "team": "blue" },
+    { "p0": [385, 210], "p1": [-385, 210], "team": "blue" },
+    { "p0": [-385, 210], "p1": [-385, -210], "team": "red" },
+
+    // Table pockets
+    { "p0": [-374, -169], "p1": [-346, -193], "team": "red" },
+    { "p0": [-16, -193], "p1": [16, -193], "team": "blue" },
+    { "p0": [346, -193], "p1": [374, -169], "team": "red" },
+    { "p0": [346, 193], "p1": [374, 169], "team": "blue" },
+    { "p0": [-16, 193], "p1": [16, 193], "team": "red" },
+    { "p0": [-346, 193], "p1": [-374, 169], "team": "blue" }
+  ],
+
+  // Connections between balls
+  "joints": [
+    // Aim
+    $aim$aim-joint
+  ]
+}
