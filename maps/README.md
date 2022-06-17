@@ -1,6 +1,6 @@
 # Maps
 
-`stadiums`
+[`stadiums`](./stadiums/)
 
 - [**Billiard.hbs**](./stadiums/Billiards.hbs)
   
@@ -30,11 +30,11 @@ Generate all billiard maps in `stadiums` folder:
 
 ## Development
 
-#### **`Billiard Template.hbst`**
+#### [**`Billiard Template.hbst`**](<./Billiards Template.hbst>)
 
 Template for the billiard stadiums.
 
-#### **`billiards.yml`**
+#### [**`billiards.yml`**](./billiards.yml)
 
 Configuration file for the `build-stadiums` tool.
 
