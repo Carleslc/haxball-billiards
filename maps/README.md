@@ -1,15 +1,5 @@
 # Maps
 
-## Build
-
-Install [Python 3](https://www.python.org/downloads/) and dependencies:
-
-`pip install --upgrade -r requirements.txt`
-
-Generate all billiard maps in `output` folder.
-
-**`python build-stadiums.py billiards.yml`**
-
 - **Billiard.hbs**
   
   Default map with standard pool physics and a line for aiming. Press SPACE, SHIFT or X to move around fast. Then use the normal movement to aim your shot. All of the following maps are special cases of this map. Most common billiards green background.
@@ -25,6 +15,16 @@ Generate all billiard maps in `output` folder.
 - **Billiard Carambola.hbs**
   
   A more aggressive map without aiming help, with smaller balls, more player shift speed and more kick strength, enough force to bounce 3 walls in a single shot without obstacles. Useful for usage of table wall indicators and _carambole / carom_ effects. Still have pockets to play normal pool games. Recommended for extended rules. Burgundy red background.
+
+## Build
+
+Install [Python 3](https://www.python.org/downloads/) and dependencies:
+
+`pip install --upgrade -r requirements.txt`
+
+Generate all billiard maps in `output` folder.
+
+**`python build-stadiums.py billiards.yml`**
 
 ## Development
 
