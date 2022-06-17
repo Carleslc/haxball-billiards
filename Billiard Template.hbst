@@ -1,7 +1,7 @@
-// https://github.com/haxball/haxball-issues/wiki/Stadium-(.hbs)-File
+// https://github.com/Carleslc/haxball-billiards
 {
   /* Map */
-  "name" : $name,
+  "name": $name,
 
   "canBeStored": true,
 
@@ -15,7 +15,7 @@
   "width" : 388,
   "height": 209,
 
-  "maxViewWidth": 1200,
+  "maxViewWidth": 1300,
   "cameraWidth": 465,
   "cameraHeight": 285,
   "cameraFollow": "ball",
@@ -35,7 +35,6 @@
   "bg": { "width": 388, "height": 209, "type": "none", "cornerRadius": 24, "kickOffRadius": 0, "color": $bg-color },
 
   // Players
-  /** invMass: The inverse of the mass, the closer to 0 the heavier this object is. 0 is static */
   "playerPhysics": {
     "radius": $player-radius,
     "bCoef": $player-bCoef,
@@ -51,13 +50,15 @@
   "ballPhysics": "disc0",
 
   // Physics & Configurations
+  /** invMass: The inverse of the mass, the closer to 0 the heavier this object is. 0 is static */
+  /** bCoef: (coefficient of restitution [e]) Bouncing coefficient. Indicates bouncing strength on a collision. Sign indicates the bounce direction of the ball. */
   "traits": {
     "whiteBall": {
       "radius": $ball-radius,
       "bCoef": $ball-bCoef,
       "invMass": $ball-invMass,
       "damping": $ball-damping,
-      "color": "ffffe0",
+      "color": "ffffe4",
       "cMask": ["wall", "ball", "red", "blue", "c1", "c2", "c3"],
       "cGroup": ["ball", "c0", "kick", "score"]
     },
@@ -171,25 +172,25 @@
     // Balls
     { "pos": [-178, 0], "trait": "whiteBall" },
 
-    { "pos": [178, 0], "trait": "redBall" },
+    $color-balls{ "pos": [178, 0], "trait": "redBall" },
 
-    { "pos": [198, -12], "trait": "blueBall" },
-    { "pos": [198, 12], "trait": "redBall" },
+    $color-balls{ "pos": [198, -12], "trait": "blueBall" },
+    $color-balls{ "pos": [198, 12], "trait": "redBall" },
 
-    { "pos": [218, -24], "trait": "redBall" },
+    $color-balls{ "pos": [218, -24], "trait": "redBall" },
     { "pos": [218, 0], "trait": "blackBall" },
-    { "pos": [218, 24], "trait": "blueBall"},
+    $color-balls{ "pos": [218, 24], "trait": "blueBall"},
 
-    { "pos": [238, -36], "trait": "blueBall" },
-    { "pos": [238, -12], "trait": "redBall"},
-    { "pos": [238, 12], "trait": "blueBall"},
-    { "pos": [238, 36], "trait": "redBall" },
+    $color-balls{ "pos": [238, -36], "trait": "blueBall" },
+    $color-balls{ "pos": [238, -12], "trait": "redBall"},
+    $color-balls{ "pos": [238, 12], "trait": "blueBall"},
+    $color-balls{ "pos": [238, 36], "trait": "redBall" },
 
-    { "pos": [258, -48], "trait": "redBall" },
-    { "pos": [258, -24], "trait": "blueBall" },
-    { "pos": [258, 0], "trait": "blueBall"},
-    { "pos": [258, 24], "trait": "redBall" },
-    { "pos": [258, 48], "trait": "blueBall" },
+    $color-balls{ "pos": [258, -48], "trait": "redBall" },
+    $color-balls{ "pos": [258, -24], "trait": "blueBall" },
+    $color-balls{ "pos": [258, 0], "trait": "blueBall"},
+    $color-balls{ "pos": [258, 24], "trait": "redBall" },
+    $color-balls{ "pos": [258, 48], "trait": "blueBall" },
 
     // Aim
     $aim{ "pos": [-178, 0], "trait": "aimDisc" },
@@ -495,7 +496,6 @@
   ],
 
   // Lines
-  /** bCoef: (coefficient of restitution [e]) Bouncing coefficient. Indicates bouncing strength. Sign indicates the bounce direction of the ball. */
   "segments": [
     // Kickoff
     { "v0": 0, "v1": 1, "trait": "kickoffLine" },

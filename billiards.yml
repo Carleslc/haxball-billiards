@@ -10,6 +10,16 @@ stadiums:
   - Billiard Tournament
   - Billiard Carambola
 
+# diameter = 2.25 in = 5.71 cm
+# mass = 6 oz = ~170.1 g
+
+# damping (roll): 1 - rolling friction [μ] (0.005 ~ 0.015) = ~0.99
+# damping (slide): 1 - sliding friction [μ] (~0.2) = ~0.8
+
+# bCoef: coefficient of restitution [e]
+# - ball 0.92 ~ 0.98
+# - table 0.5
+
 variables:
   defaults:
     player-acceleration: 0.1
@@ -22,7 +32,7 @@ variables:
     player-radius: 18
     ball-radius: 11
     ball-bCoef: 0.92
-    ball-damping: 0.986
+    ball-damping: 0.988
     ball-invMass: 0.01
     bg-color: 084e45
     bgIndicator-color: b59978
@@ -35,12 +45,14 @@ variables:
     tableWall-bias: -6
     tableWall-color: '163433'
     tableWallCorner-bCoef: 0.45
+    color-balls:
     aim:
+      enable: true
     aim-joint:
       d0: 0
       d1: 16
       bCoef: 0
-      color: ffffff
+      color: ffffe4
       length: -1.0e-59
       strength: 4.9e-06
   
@@ -53,30 +65,39 @@ variables:
     kickOffReset: full
     red-spawn: [-267, 0]
     blue-spawn: [-311, 0]
+    ball-invMass: 0.1
+    player-invMass: 2
+    player-kickStrength: 125
+    player-bCoef: 0.01
+    color-balls:
+      enable: false
+    aim-joint:
+      extends: defaults
+      d1: 2
   
   Billiard Tournament:
     aim:
-      raw: '// '
+      enable: false
     bg-color: 066bb5
     bgTable-color: '202831'
     bgIndicator-color: fffff4
     kickoffLine-color: 145e9e
     tableWall-color: 145e9e
-    # tableWall-bCoef: 0.52
+    tableWall-bCoef: 0.52
 
   Billiard Carambola:
     aim:
-      raw: '// '
+      raw: '// ' # same as enable: false
     ball-radius: 10
-    ball-invMass: 0.5
+    ball-invMass: 0.4
     bg-color: 66202b
     bgTable-color: 2e1418
-    bgIndicator-color: ffffe0
+    bgIndicator-color: ffffe4
     kickoffLine-color: 701e4e
     tableWall-color: 50161c
-    # tableWall-bCoef: 0.65
+    tableWall-bCoef: 0.6
     tableWall-bias: -15
     player-invMass: 500
-    player-kickStrength: 60
+    player-kickStrength: 50
     player-kickingAcceleration: 0.5
-    tableWall-bCoef: 0.65
+    ball-damping: 0.99

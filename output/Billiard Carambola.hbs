@@ -1,7 +1,7 @@
-// https://github.com/haxball/haxball-issues/wiki/Stadium-(.hbs)-File
+// https://github.com/Carleslc/haxball-billiards
 {
   /* Map */
-  "name" : "Billiard Carambola (by kslar)",
+  "name": "Billiard Carambola (by kslar)",
 
   "canBeStored": true,
 
@@ -15,7 +15,7 @@
   "width" : 388,
   "height": 209,
 
-  "maxViewWidth": 1200,
+  "maxViewWidth": 1300,
   "cameraWidth": 465,
   "cameraHeight": 285,
   "cameraFollow": "ball",
@@ -35,7 +35,6 @@
   "bg": { "width": 388, "height": 209, "type": "none", "cornerRadius": 24, "kickOffRadius": 0, "color": "66202b" },
 
   // Players
-  /** invMass: The inverse of the mass, the closer to 0 the heavier this object is. 0 is static */
   "playerPhysics": {
     "radius": 18,
     "bCoef": 0.15,
@@ -44,28 +43,30 @@
     "acceleration": 0.1,
     "kickingAcceleration": 0.5,
     "kickingDamping": 0.9,
-    "kickStrength": 60
+    "kickStrength": 50
   },
 
   // Main ball
   "ballPhysics": "disc0",
 
   // Physics & Configurations
+  /** invMass: The inverse of the mass, the closer to 0 the heavier this object is. 0 is static */
+  /** bCoef: (coefficient of restitution [e]) Bouncing coefficient. Indicates bouncing strength on a collision. Sign indicates the bounce direction of the ball. */
   "traits": {
     "whiteBall": {
       "radius": 10,
       "bCoef": 0.92,
-      "invMass": 0.5,
-      "damping": 0.986,
-      "color": "ffffe0",
+      "invMass": 0.4,
+      "damping": 0.99,
+      "color": "ffffe4",
       "cMask": ["wall", "ball", "red", "blue", "c1", "c2", "c3"],
       "cGroup": ["ball", "c0", "kick", "score"]
     },
     "redBall": {
       "radius": 10,
       "bCoef": 0.92,
-      "invMass": 0.5,
-      "damping": 0.986,
+      "invMass": 0.4,
+      "damping": 0.99,
       "color": "e56e56",
       "cMask": ["wall", "ball", "c0", "c1", "c2", "c3"],
       "cGroup": ["ball", "c1"]
@@ -73,8 +74,8 @@
     "blueBall": {
       "radius": 10,
       "bCoef": 0.92,
-      "invMass": 0.5,
-      "damping": 0.986,
+      "invMass": 0.4,
+      "damping": 0.99,
       "color": "5689e5",
       "cMask": ["wall", "ball", "c0", "c1", "c2", "c3"],
       "cGroup": ["ball", "c2"]
@@ -82,14 +83,14 @@
     "blackBall": {
       "radius": 10,
       "bCoef": 0.92,
-      "invMass": 0.5,
-      "damping": 0.986,
+      "invMass": 0.4,
+      "damping": 0.99,
       "color": "181818",
       "cMask": ["wall", "ball", "c0", "c1", "c2", "c3"],
       "cGroup": ["ball", "c3", "score"]
     },
     "tableWall": {
-      "bCoef": 0.65,
+      "bCoef": 0.6,
       "bias": -15,
       "color": "50161c",
       "cMask": ["ball", "c0", "c1", "c2", "c3"],
@@ -128,7 +129,7 @@
       "cGroup": ["wall"]
     },
     "bgIndicator": {
-      "color": "ffffe0",
+      "color": "ffffe4",
       "cMask": [],
       "cGroup": ["wall"]
     },
@@ -495,7 +496,6 @@
   ],
 
   // Lines
-  /** bCoef: (coefficient of restitution [e]) Bouncing coefficient. Indicates bouncing strength. Sign indicates the bounce direction of the ball. */
   "segments": [
     // Kickoff
     { "v0": 0, "v1": 1, "trait": "kickoffLine" },
@@ -740,6 +740,6 @@
   // Connections between balls
   "joints": [
     // Aim
-    // { "d0": 0, "d1": 16, "bCoef": 0, "color": "ffffff", "length": -1e-59, "strength": 4.9e-06 }
+    // { "d0": 0, "d1": 16, "bCoef": 0, "color": "ffffe4", "length": -1e-59, "strength": 4.9e-06 }
   ]
 }
