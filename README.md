@@ -48,6 +48,8 @@ Learn about the collision flags `cMask` and `cGroup` to determine which objects 
 
 Physics empirical properties for billiards.
 
+# Maps
+
 ## Build
 
 Install [Python 3](https://www.python.org/downloads/) and dependencies:
