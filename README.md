@@ -78,7 +78,7 @@ Configuration file for the `build-stadiums` tool.
 
 **Attributes**
 
-- `template`: Template file (`.hbst`)
+- `template`: Template file. `.hbst` is not an official format of HaxBall. It is a jsonc (JSON with comments) format with `$variables`.
 - `author`: Author of the stadiums
 - `stadiums`: A list of all stadium names to build
 - `variables`: Variable definitions to be replaced in the template file. Variables are names prefixed with an `$` (for instance `$name` value for the stadium name)

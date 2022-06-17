@@ -1,11 +1,11 @@
 # Configuration input for build-stadiums.py
 
-template: Billiard Template.hbst
+template: Billiards Template.hbst
 
 author: kslar
 
 stadiums:
-  - Billiard
+  - Billiards
   - Billiard Practice
   - Billiard Tournament
   - Billiard Carambola
