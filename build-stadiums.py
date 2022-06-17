@@ -11,18 +11,58 @@ def set_args():
   parser.add_argument("config", help="stadium configuration .yml file")
   args = parser.parse_args()
 
+def inherit(value, name):
+  parent = value['extends']
+  extends = CONFIG['variables'][parent]
+  parent_value = extends[name]
+
+  if type(parent_value) is not dict:
+    return parent_value
+  
+  child = parent_value.copy()
+
+  if 'extends' in parent_value:
+    child = inherit(parent_value, name) # hierarchical inheritance
+
+  for key, child_value in value.items():
+    if key != 'extends':
+      child[key] = child_value
+  
+  return child
+
 def var(stadium, name, default=None):
   value = default
+
   if stadium in CONFIG['variables']:
     var_dict = CONFIG['variables'][stadium]
     if name in var_dict:
       value = var_dict[name]
+  
   if value is None:
     value = CONFIG['variables']['defaults'][name] or { 'raw': '' }
+  
   if type(value) is dict:
     if 'raw' in value:
       return str(value['raw'])
+    
+    if 'extends' in value:
+      value = inherit(value, name)
+
+      if type(value) is not dict:
+        return json.dumps(value)
+    
+    if 'enable' in value:
+      if value['enable'] == False:
+        return '// '
+      
+      value = value.copy()
+      del value['enable']
+
+      if not value:
+        return ''
+    
     return json_entry(value)
+  
   return json.dumps(value)
 
 def stadium_variables(stadium, prefix=''):

@@ -1,7 +1,7 @@
 import pyjson5 # json with comments
 import argparse
 
-from utils import json_entry, write_output
+from utils import json_entry, json_slice, write_output
 
 def set_args():
   global args
@@ -12,8 +12,17 @@ def set_args():
   args = parser.parse_args()
 
 def get_stadium(file):
-  with open(file, 'r') as stadium:
-    return pyjson5.loads(stadium.read())
+  with open(file, 'r') as stadium_file:
+    stadium_contents = stadium_file.read()
+  try:
+    stadium = pyjson5.loads(stadium_contents)
+  except pyjson5.Json5IllegalCharacter:
+    # illegal json values like $variables in a .hbst file
+    stadium = {
+      'vertexes': json_slice(stadium_contents, 'vertexes'),
+      'segments': json_slice(stadium_contents, 'segments'),
+    }
+  return stadium
 
 def vertex(v):
   return (v['x'], v['y'], v.get('trait'))
@@ -26,6 +35,7 @@ def vertex_to_index(stadium):
   
   for i, v in enumerate(stadium['vertexes']):
     v = vertex(v)
+    
     if v in vertexes:
       print(f'Vertex {i} {v} is duplicated: {vertexes[v]}')
     else:
@@ -45,6 +55,7 @@ def json_entries(key, entries, map_entry=json_entry_wrapper, split_groups=None):
 
   for i, v in enumerate(entries):
     split_n = split_groups.get(v.get('trait'), 0) if split_groups else 0
+
     if 'trait' in v and v['trait'] != trait:
       trait = v['trait']
       split_i = 0
@@ -52,6 +63,7 @@ def json_entries(key, entries, map_entry=json_entry_wrapper, split_groups=None):
     else:
       split_i += 1
       split = split_n and split_i % split_n == 0
+    
     if split and i > 0:
       entries_str += '\n' # spacing
     
@@ -95,15 +107,19 @@ def update_segments(old_stadium, new_stadium):
 
 def split_groups(i):
   split = {}
+
   if args.split:
     for split_group in args.split:
       split_parts = split_group.split(':')
       trait = split_parts[0]
       split_n = 0
+
       if len(split_parts) > 1:
         split_n_groups = split_parts[1].split('/')
         split_n = split_n_groups[i] if len(split_n_groups) > i else split_n_groups[-1]
+      
       split[trait] = int(split_n)
+  
   return split
 
 if __name__ == "__main__":
