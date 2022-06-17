@@ -3,7 +3,7 @@ import json
 import yaml
 import argparse
 
-from utils import json_entry
+from utils import json_entry, write_output
 
 def set_args():
   global args
@@ -79,13 +79,8 @@ def build_stadium(stadium):
     template = template_file.read()
   
   contents = replace(template, stadium_variables(stadium, prefix='$'))
-
-  output_file = f'output/{stadium}.hbs'
   
-  with open(output_file, 'w') as output:
-    output.write(contents)
-  
-  print(output_file)
+  write_output(f'stadiums/{stadium}.hbs', contents)
 
 if __name__ == "__main__":
   global CONFIG
