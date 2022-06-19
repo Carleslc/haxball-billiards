@@ -45,6 +45,8 @@ variables:
     tableWall-bias: -6
     tableWall-color: '163433'
     tableWallCorner-bCoef: 0.45
+    tableBorder-bias: 40
+    stop-bias: 40
     color-balls:
     aim:
       enable: true
@@ -88,7 +90,6 @@ variables:
   Billiard Carambola:
     aim:
       raw: '// ' # same as enable: false
-    ball-radius: 10
     ball-invMass: 0.4
     bg-color: 66202b
     bgTable-color: 2e1418

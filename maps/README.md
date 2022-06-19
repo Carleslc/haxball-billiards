@@ -2,7 +2,7 @@
 
 [`stadiums`](./stadiums/)
 
-- [**Billiard.hbs**](./stadiums/Billiards.hbs)
+- [**Billiards.hbs**](./stadiums/Billiards.hbs)
   
   Default map with standard pool physics and a line for aiming. Press SPACE, SHIFT or X to move around fast. Then use the normal movement to aim your shot. All of the following maps are special cases of this map. Most common billiards green background.
 
@@ -16,7 +16,7 @@
 
 - [**Billiard Carambola.hbs**](<./stadiums/Billiard Carambola.hbs>)
   
-  A more aggressive map without aiming help, with smaller balls, more player shift speed and more kick strength, enough force to bounce 3 walls in a single shot without obstacles. Useful for usage of table wall indicators and _carambole / carom_ effects. Still have pockets to play normal pool games. Recommended for extended rules. Burgundy red background.
+  A more aggressive map without aiming help, more player shift speed and more kick strength, enough force to bounce 3 walls in a single shot without obstacles. Useful for usage of table wall indicators and _carambole / carom_ effects. Still have pockets to play normal pool games. Recommended for extended rules. Burgundy red background.
 
 ## Build
 
@@ -49,9 +49,9 @@ Configuration file for the `build-stadiums` tool.
 
 Variable values follow the YAML format and they will be automatically converted to JSON (for the `.hbs` stadium file). You can add text (strings), numbers (integers or floats), lists and objects.
 
-Object mappings can also be inherited and overriden from _defaults_ or other stadium variables, using the `extends` attribute with `defaults` or an stadium name.
+Object mappings can also be inherited and overriden from _defaults_ or other stadium variables, using the `extends` attribute with _defaults_ or an stadium name.
 
-You can skip the JSON conversion to write values as raw strings providing a `raw` attribute with the string to replace the variable with. This may be useful to build non scalars, for instance to write `// ` to insert comments instead the JSON formatted string `"// "`.
+You can skip the JSON conversion to write values as raw strings providing a `raw` attribute with the string to replace the variable with. This is useful to insert non scalars, for instance to write `// ` to insert comments instead the JSON formatted string `"// "`. That is the same behaviour as the `enable: false` variable option to allow selection of some features for specific maps.
 
 ## Tools
 

@@ -25,7 +25,7 @@ def get_stadium(file):
   return stadium
 
 def vertex(v):
-  return (v['x'], v['y'], v.get('trait'))
+  return (attr for attr in v)
 
 def index_to_vertex(stadium):
   return dict(map(lambda i_v: (i_v[0], vertex(i_v[1])), enumerate(stadium['vertexes'])))
