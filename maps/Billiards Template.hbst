@@ -167,19 +167,6 @@
       "bCoef": 0,
       "cMask": ["ball", "c0", "c1", "c2", "c3"]
     },
-    "rail": {
-      "vis": false,
-      "bCoef": 5,
-      "bias": -5,
-      "cMask": ["c0", "c1", "c2", "c3"]
-    },
-    "railLaunch": {
-      "vis": false,
-      "color": "880000",
-      "bCoef": -5,
-      "bias": -5,
-      "cMask": ["c0", "c1", "c2", "c3"]
-    },
     "railSide": {
       "vis": false,
       "bCoef": 10,
@@ -554,14 +541,7 @@
     /* 251 */ { "x": -455, "y": 88, "trait": "railStopLeft" },
 
     /* 252 */ { "x": -20, "y": -229, "trait": "railSide" },
-    /* 253 */ { "x": 5, "y": -275, "trait": "railSide" },
-
-    // 255 limit!!
-    // Ball rails: Launcher
-    // /* 256 */ { "x": 445, "y": -265, "trait": "rail" },
-
-    // /* 257 */ { "x": 335, "y": -265, "trait": "railLaunch" },
-    // /* 258 */ { "x": 269, "y": -229, "trait": "railLaunch" },
+    /* 253 */ { "x": 5, "y": -275, "trait": "railSide" }
   ],
 
   // Lines
@@ -799,10 +779,7 @@
     { "v0": 247, "v1": 251, "trait": "railStopLeft" },
     
     // Ball rails: Launcher
-    { "v0": 252, "v1": 253, "trait": "railSide" },
-
-    // { "v0": 3, "v1": 256, "trait": "rail" },
-    // { "v0": 257, "v1": 258, "trait": "railLaunch" },
+    { "v0": 252, "v1": 253, "trait": "railSide" }
   ],
 
   // Goals
