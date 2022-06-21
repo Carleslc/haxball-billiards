@@ -324,6 +324,18 @@ function startNextMap(name, by) {
   }
 }
 
+function updatePlayersLength() {
+  N_PLAYERS = getPlayers().length;
+}
+
+function playersInGame() {
+  return N_PLAYERS - TEAMS[TEAM.SPECTATOR].length;
+}
+
+function activePlayers() {
+  return getPlayers().filter(player => !isAFK(player));
+}
+
 function voteMap(player, map) {
   map = map.toUpperCase();
 
@@ -335,7 +347,7 @@ function voteMap(player, map) {
       
       info(`${player.name} has voted for ${map.toLowerCase()} map (${mapVotes.size} ${mapVotes.size !== 1 ? 'votes' : 'vote'})`, null, COLOR.SUCCESS);
     
-      const majority = mapVotes.size > Math.floor(N_PLAYERS / 2);
+      const majority = mapVotes.size > Math.floor(activePlayers().length / 2);
 
       if (majority) {
         startNextMap(map, 'majority vote');
@@ -364,17 +376,7 @@ function resetVoting() {
   });
 }
 
-function updatePlayersLength() {
-  N_PLAYERS = getPlayers().length;
-}
-
-function playersInGame() {
-  return N_PLAYERS - TEAMS[TEAM.SPECTATOR].length;
-}
-
 function updateCurrentPlayer(changeTeam = true) {
-  console.log('CURRENT_PLAYER', CURRENT_PLAYER, FOUL); // FIXME infinite loop
-
   const previousTurnPlayer = CURRENT_PLAYER;
 
   if (N_PLAYERS === 0) {
@@ -404,10 +406,8 @@ function updateCurrentPlayer(changeTeam = true) {
     
     info(turn);
   }
-}
 
-function updateTeams() {
-  TEAMS = getTeams();
+  console.log('CURRENT_PLAYER', CURRENT_PLAYER, FOUL);
 }
 
 function updateNextPlayers() {
@@ -445,7 +445,10 @@ function moveHostPlayer(host) {
 function startGame() {
   if (!PLAYING) {
     setTeams();
-    room.startGame();
+
+    if (playersInGame()) {
+      room.startGame();
+    }
   }
 }
 
@@ -473,10 +476,6 @@ room.onGameStart = function() {
 room.onGameStop = function(byPlayer) {
   PLAYING = false;
 
-  if (!byPlayer || isHostPlayer(byPlayer)) {
-    chooseMap();
-  }
-
   if (TEAMS[TEAM.SPECTATOR].length > 0) {
     const moveToSpectator = (player) => {
       setPlayerTeam(player, TEAM.SPECTATOR);
@@ -484,6 +483,10 @@ room.onGameStop = function(byPlayer) {
   
     TEAMS[TEAM.RED].forEach(moveToSpectator);
     TEAMS[TEAM.BLUE].forEach(moveToSpectator);
+  }
+
+  if (!byPlayer || isHostPlayer(byPlayer)) {
+    chooseMap();
   }
 };
 
@@ -503,14 +506,14 @@ function chooseMap() {
 
   updatePlayersLength();
 
-  setTeams();
-
   if (N_PLAYERS != previousPlayers) {
     console.log(`${previousPlayers} -> ${N_PLAYERS} players in the room (Playing: ${PLAYING})`);
   }
 
+  const noAfk = activePlayers().length;
+
   if (PLAYING) {
-    if ((previousPlayers < 2 && N_PLAYERS >= 2) || (previousPlayers >= 2 && N_PLAYERS < 2)) {
+    if (NEXT_MAP !== CURRENT_MAP && noAfk >= 2 && CURRENT_MAP === 'PRACTICE') {
       stopGame();
       return true;
     }
@@ -522,13 +525,13 @@ function chooseMap() {
         NEXT_MAP = undefined;
         NEXT_MAP_OBJECT = undefined;
       }
-    } else if (N_PLAYERS === 1) {
+    } else if (N_PLAYERS === 1 || noAfk === 1) {
       selectMap('PRACTICE');
-    } else {
+    } else if (noAfk > 0) {
       selectMap(DEFAULT_MAP);
     }
   
-    if (playersInGame() > 0) {
+    if (noAfk > 0) {
       startGame();
     } else {
       stopGame();
@@ -538,7 +541,14 @@ function chooseMap() {
   return false;
 }
 
+let UPDATING_TEAMS = false;
+
 function setTeams() {
+  if (UPDATING_TEAMS) {
+    return;
+  }
+  UPDATING_TEAMS = true;
+
   let teams = getTeams();
 
   const limit = 2;
@@ -578,6 +588,8 @@ function setTeams() {
     }
   });
 
+  UPDATING_TEAMS = false;
+
   return teams;
 }
 
@@ -596,7 +608,6 @@ function setAuth(player) {
     clearTimeout(oldAuth.removalTask);
     delete AUTH[oldAuth.id];
     delete AUTH_CACHE_TASKS[auth];
-    console.log('Clear', oldAuth);
   }
 
   checkAdmin(player);
@@ -627,20 +638,23 @@ function isAFK(player) {
 function setAFK(player) {
   AFK_PLAYERS.add(player.id);
   setPlayerTeam(player, TEAM.SPECTATOR);
+  info("You're now inactive, use !afk or press any key to join the game", player, COLOR.DEFAULT);
 }
 
-function resetAFK(player) {
+function resetAFK(player, updateMap = true) {
   AFK_TIME[player.id] = 0;
 
   if (isAFK(player)) {
     AFK_PLAYERS.delete(player.id);
 
-    chooseMap();
+    if (updateMap) {
+      chooseMap();
+    }
   }
 }
 
 function resetPlayingAFK() {
-  getPlayers().filter(p => p.team !== TEAM.SPECTATOR).forEach(resetAFK);
+  getPlayers().filter(p => p.team !== TEAM.SPECTATOR).forEach(player => resetAFK(player, false));
 }
 
 function clearAFK(player) {
@@ -650,7 +664,7 @@ function clearAFK(player) {
 function incrementAFK(player) {
   const afkSeconds = ++AFK_TIME[player.id];
 
-  if (PLAYING && player.team !== TEAM.SPECTATOR && playersInGame() > 1) {
+  if (PLAYING && player.team !== TEAM.SPECTATOR && N_PLAYERS > 1) {
     if (CURRENT_PLAYER && player.id === CURRENT_PLAYER.id) {
       if (afkSeconds === AFK_PLAYING_SECONDS - AFK_SECONDS_WARNING) {
         warn(`${player.name}, if you don't move in the next ${AFK_SECONDS_WARNING} seconds, you will be moved to spectators.`, player);
@@ -704,11 +718,10 @@ function updateOnTeamMove(player) {
     updateNextPlayers();
   
     if (CURRENT_PLAYER && CURRENT_PLAYER.id === player.id) {
-      CURRENT_PLAYER = null;
       updateCurrentPlayer(false);
     }
 
-    if (!playersInGame()) {
+    if (!playersInGame() || (activePlayers().length < 2 && CURRENT_MAP !== 'PRACTICE')) {
       stopGame();
     }
   }
@@ -722,7 +735,6 @@ room.onPlayerLeave = function(player) {
   }
   
   if (!PLAYING && N_PLAYERS > 0 && player.admin) {
-    setTeams();
     startGame();
   } else if (!playersInGame()) {
     stopGame();
@@ -736,9 +748,8 @@ room.onPlayerLeave = function(player) {
 };
 
 room.onPlayerTeamChange = function(player) {
-  updateTeams();
-
   if (player.team === TEAM.SPECTATOR) {
+    setTeams();
     updateOnTeamMove(player);
   } else if (isHostPlayer(player)) {
     moveHostPlayer(player);
