@@ -6,9 +6,9 @@ author: kslar
 
 stadiums:
   - Billiards
-  - Billiard Practice
-  - Billiard Tournament
-  - Billiard Carambola
+  - Billiards Practice
+  - Billiards Tournament
+  - Billiards Carambola
 
 # diameter = 2.25 in = 5.71 cm
 # mass = 6 oz = ~170.1 g
@@ -22,6 +22,7 @@ stadiums:
 
 variables:
   defaults:
+    store: false
     player-acceleration: 0.1
     player-bCoef: 0.15
     player-damping: 0.8
@@ -58,7 +59,7 @@ variables:
       length: -1.0e-59
       strength: 4.9e-06
   
-  Billiard Practice:
+  Billiards Practice:
     bg-color: 2a5e52
     bgTable-color: 3f261e
     bgIndicator-color: b59978
@@ -77,7 +78,7 @@ variables:
       extends: defaults
       d1: 2
   
-  Billiard Tournament:
+  Billiards Tournament:
     aim:
       enable: false
     bg-color: 066bb5
@@ -87,7 +88,7 @@ variables:
     tableWall-color: 145e9e
     tableWall-bCoef: 0.52
 
-  Billiard Carambola:
+  Billiards Carambola:
     aim:
       raw: '// ' # same as enable: false
     ball-invMass: 0.4

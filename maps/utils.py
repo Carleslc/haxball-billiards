@@ -24,3 +24,6 @@ def json_slice(s, key):
     return []
   start, end = match.span(1)
   return pyjson5.loads(s[start:end])
+
+def json_compress(contents):
+  return pyjson5.dumps(pyjson5.loads(contents))

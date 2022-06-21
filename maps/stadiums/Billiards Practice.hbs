@@ -1,9 +1,9 @@
 // https://github.com/Carleslc/haxball-billiards
 {
   /* Map */
-  "name": "Billiard Tournament (by kslar)",
+  "name": "Billiards Practice (by kslar)",
 
-  "canBeStored": true,
+  "canBeStored": false,
 
   /**
   9 foot Billiard
@@ -20,34 +20,34 @@
   "height": 209,
 
   "maxViewWidth": 1300,
-  "cameraWidth": 465,
+  "cameraWidth": 485,
   "cameraHeight": 285,
   "cameraFollow": "ball",
 
   // Spawn
   "spawnDistance": 267,
   "redSpawnPoints": [
-    [-267, -89]
+    [-267, 0]
   ],
   "blueSpawnPoints": [
-    [-267, 89]
+    [-311, 0]
   ],
 
-  "kickOffReset": "partial",
+  "kickOffReset": "full",
 
   // Background
-  "bg": { "width": 388, "height": 209, "type": "none", "cornerRadius": 24, "kickOffRadius": 0, "color": "066bb5" },
+  "bg": { "width": 388, "height": 209, "type": "none", "cornerRadius": 24, "kickOffRadius": 0, "color": "2a5e52" },
 
   // Players
   "playerPhysics": {
     "radius": 18,
-    "bCoef": 0.15,
-    "invMass": 20,
+    "bCoef": 0.01,
+    "invMass": 2,
     "damping": 0.8,
     "acceleration": 0.1,
     "kickingAcceleration": 0.36,
     "kickingDamping": 0.9,
-    "kickStrength": 1250
+    "kickStrength": 125
   },
 
   // Main ball
@@ -60,7 +60,7 @@
     "whiteBall": {
       "radius": 11,
       "bCoef": 0.92,
-      "invMass": 0.01,
+      "invMass": 0.1,
       "damping": 0.988,
       "color": "ffffe4",
       "cMask": ["wall", "ball", "red", "blue", "c1", "c2", "c3"],
@@ -69,7 +69,7 @@
     "redBall": {
       "radius": 11,
       "bCoef": 0.92,
-      "invMass": 0.01,
+      "invMass": 0.1,
       "damping": 0.988,
       "color": "e56e56",
       "cMask": ["wall", "ball", "c0", "c1", "c2", "c3"],
@@ -78,7 +78,7 @@
     "blueBall": {
       "radius": 11,
       "bCoef": 0.92,
-      "invMass": 0.01,
+      "invMass": 0.1,
       "damping": 0.988,
       "color": "5689e5",
       "cMask": ["wall", "ball", "c0", "c1", "c2", "c3"],
@@ -87,22 +87,22 @@
     "blackBall": {
       "radius": 11,
       "bCoef": 0.92,
-      "invMass": 0.01,
+      "invMass": 0.1,
       "damping": 0.988,
       "color": "181818",
       "cMask": ["wall", "ball", "c0", "c1", "c2", "c3"],
       "cGroup": ["ball", "c3", "score"]
     },
     "tableWall": {
-      "bCoef": 0.52,
+      "bCoef": 0.5,
       "bias": -6,
-      "color": "145e9e",
+      "color": "084e45",
       "cMask": ["ball", "c0", "c1", "c2", "c3"],
       "cGroup": ["wall"]
     },
     "tableWallCorner": {
       "bCoef": 0.45,
-      "color": "145e9e",
+      "color": "084e45",
       "cMask": ["ball", "c0", "c1", "c2", "c3"],
       "cGroup": ["wall"]
     },
@@ -123,24 +123,24 @@
     "kickoffLine": {
       "vis": false,
       "bCoef": 0.1,
-      "color": "145e9e",
+      "color": "085849",
       "cMask": ["red", "blue"],
       "cGroup": ["redKO", "blueKO"]
     },
     "bgTable": {
-      "color": "202831",
+      "color": "3f261e",
       "cMask": [],
       "cGroup": ["wall"]
     },
     "bgTableBorderIn": {
-      "color": "202831",
+      "color": "3f261e",
       "bCoef": 5,
       "bias": 40,
       "cMask": ["wall", "ball", "c0", "c1", "c2", "c3"],
       "cGroup": ["wall"]
     },
     "bgTableBorderOut": {
-      "color": "202831",
+      "color": "3f261e",
       "bCoef": 5,
       "bias": -40,
       "cMask": ["wall", "ball", "c0", "c1", "c2", "c3"],
@@ -153,7 +153,7 @@
       "cGroup": ["wall"]
     },
     "bgIndicator": {
-      "color": "fffff4",
+      "color": "b59978",
       "cMask": [],
       "cGroup": ["wall"]
     },
@@ -201,41 +201,41 @@
   "planes": [
     { "normal": [0, -1], "dist": -275, "trait": "playerBoundary" },
     { "normal": [0, 1], "dist": -275, "trait": "playerBoundary" },
-    { "normal": [1, 0], "dist": -455, "trait": "playerBoundary" },
-    { "normal": [-1, 0], "dist": -455, "trait": "playerBoundary" },
+    { "normal": [1, 0], "dist": -475, "trait": "playerBoundary" },
+    { "normal": [-1, 0], "dist": -475, "trait": "playerBoundary" },
 
     { "normal": [0, -1], "dist": -275, "trait": "ballBoundary" },
     { "normal": [0, 1], "dist": -275, "trait": "ballBoundary" },
-    { "normal": [1, 0], "dist": -455, "trait": "ballBoundary" },
-    { "normal": [-1, 0], "dist": -455, "trait": "ballBoundary" }
+    { "normal": [1, 0], "dist": -475, "trait": "ballBoundary" },
+    { "normal": [-1, 0], "dist": -475, "trait": "ballBoundary" }
   ],
 
   "discs": [
     // Balls
     { "pos": [-178, 0], "trait": "whiteBall" },
 
-    { "pos": [178, 0], "trait": "redBall" },
+    // { "pos": [178, 0], "trait": "redBall" },
 
-    { "pos": [198, -12], "trait": "blueBall" },
-    { "pos": [198, 12], "trait": "redBall" },
+    // { "pos": [198, -12], "trait": "blueBall" },
+    // { "pos": [198, 12], "trait": "redBall" },
 
-    { "pos": [218, -24], "trait": "redBall" },
+    // { "pos": [218, -24], "trait": "redBall" },
     { "pos": [218, 0], "trait": "blackBall" },
-    { "pos": [218, 24], "trait": "blueBall"},
+    // { "pos": [218, 24], "trait": "blueBall"},
 
-    { "pos": [238, -36], "trait": "blueBall" },
-    { "pos": [238, -12], "trait": "redBall"},
-    { "pos": [238, 12], "trait": "blueBall"},
-    { "pos": [238, 36], "trait": "redBall" },
+    // { "pos": [238, -36], "trait": "blueBall" },
+    // { "pos": [238, -12], "trait": "redBall"},
+    // { "pos": [238, 12], "trait": "blueBall"},
+    // { "pos": [238, 36], "trait": "redBall" },
 
-    { "pos": [258, -48], "trait": "redBall" },
-    { "pos": [258, -24], "trait": "blueBall" },
-    { "pos": [258, 0], "trait": "blueBall"},
-    { "pos": [258, 24], "trait": "redBall" },
-    { "pos": [258, 48], "trait": "blueBall" },
+    // { "pos": [258, -48], "trait": "redBall" },
+    // { "pos": [258, -24], "trait": "blueBall" },
+    // { "pos": [258, 0], "trait": "blueBall"},
+    // { "pos": [258, 24], "trait": "redBall" },
+    // { "pos": [258, 48], "trait": "blueBall" },
 
     // Aim
-    // { "pos": [-178, 0], "trait": "aimDisc" },
+    { "pos": [-178, 0], "trait": "aimDisc" },
 
     // Table Holes
     { "pos": [-364, -189], "trait": "bgHole" },
@@ -537,8 +537,8 @@
     /* 249 */ { "x": -387, "y": 84, "trait": "bgIndicator" },
 
     // Ball rails: Stop
-    /* 250 */ { "x": 455, "y": 88, "trait": "railStopRight" },
-    /* 251 */ { "x": -455, "y": 88, "trait": "railStopLeft" },
+    /* 250 */ { "x": 475, "y": 88, "trait": "railStopRight" },
+    /* 251 */ { "x": -475, "y": 88, "trait": "railStopLeft" },
 
     /* 252 */ { "x": -20, "y": -229, "trait": "railSide" },
     /* 253 */ { "x": 5, "y": -275, "trait": "railSide" }
@@ -802,6 +802,6 @@
   // Connections between balls
   "joints": [
     // Aim
-    // { "d0": 0, "d1": 16, "bCoef": 0, "color": "ffffe4", "length": -1e-59, "strength": 4.9e-06 }
+    { "d0": 0, "d1": 2, "bCoef": 0, "color": "ffffe4", "length": -1e-59, "strength": 4.9e-06 }
   ]
 }
