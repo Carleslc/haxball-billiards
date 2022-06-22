@@ -2,7 +2,7 @@
 
 template: Billiards Template.hbst
 
-author: kslar
+author: null
 
 stadiums:
   - Billiards
@@ -38,9 +38,9 @@ variables:
     bg-color: 084e45
     bgIndicator-color: b59978
     bgTable-color: 2e1418
-    red-spawn: [-267, -89]
-    blue-spawn: [-267, 89]
-    kickOffReset: partial
+    red-spawn: [[-267, -89], [-312, -89]]
+    blue-spawn: [[-267, 89], [-312, 89]]
+    kickOffReset: none
     kickoffLine-color: 085849
     tableWall-bCoef: 0.5
     tableWall-bias: -6
@@ -66,8 +66,8 @@ variables:
     tableWall-color: 084e45
     kickoffLine-color: '085849'
     kickOffReset: full
-    red-spawn: [-267, 0]
-    blue-spawn: [-311, 0]
+    red-spawn: [[-267, 0], [-267, -45]]
+    blue-spawn: [[-312, 0], [-312, -45]]
     ball-invMass: 0.1
     player-invMass: 2
     player-kickStrength: 125

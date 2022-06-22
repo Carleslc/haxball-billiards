@@ -26,12 +26,8 @@
 
   // Spawn
   "spawnDistance": 267,
-  "redSpawnPoints": [
-    $red-spawn
-  ],
-  "blueSpawnPoints": [
-    $blue-spawn
-  ],
+  "redSpawnPoints": $red-spawn,
+  "blueSpawnPoints": $blue-spawn,
 
   "kickOffReset": $kickOffReset,
 
@@ -56,6 +52,10 @@
   // Physics & Configurations
   /** invMass: The inverse of the mass, the closer to 0 the heavier this object is. 0 is static */
   /** bCoef: (coefficient of restitution [e]) Bouncing coefficient. Indicates bouncing strength on a collision. Sign indicates the bounce direction of the ball. */
+  /*
+  c0 = current player
+  c1 = other players
+  */
   "traits": {
     "whiteBall": {
       "radius": $ball-radius,
@@ -63,8 +63,8 @@
       "invMass": $ball-invMass,
       "damping": $ball-damping,
       "color": "ffffe4",
-      "cMask": ["wall", "ball", "red", "blue", "c1", "c2", "c3"],
-      "cGroup": ["ball", "c0", "kick", "score"]
+      "cMask": ["wall", "ball", "c0"],
+      "cGroup": ["ball", "kick", "score"]
     },
     "redBall": {
       "radius": $ball-radius,
@@ -72,8 +72,8 @@
       "invMass": $ball-invMass,
       "damping": $ball-damping,
       "color": "e56e56",
-      "cMask": ["wall", "ball", "c0", "c1", "c2", "c3"],
-      "cGroup": ["ball", "c1"]
+      "cMask": ["wall", "ball"],
+      "cGroup": ["ball"]
     },
     "blueBall": {
       "radius": $ball-radius,
@@ -81,8 +81,8 @@
       "invMass": $ball-invMass,
       "damping": $ball-damping,
       "color": "5689e5",
-      "cMask": ["wall", "ball", "c0", "c1", "c2", "c3"],
-      "cGroup": ["ball", "c2"]
+      "cMask": ["wall", "ball"],
+      "cGroup": ["ball"]
     },
     "blackBall": {
       "radius": $ball-radius,
@@ -90,34 +90,41 @@
       "invMass": $ball-invMass,
       "damping": $ball-damping,
       "color": "181818",
-      "cMask": ["wall", "ball", "c0", "c1", "c2", "c3"],
-      "cGroup": ["ball", "c3", "score"]
+      "cMask": ["wall", "ball"],
+      "cGroup": ["ball", "score"]
     },
     "tableWall": {
       "bCoef": $tableWall-bCoef,
       "bias": $tableWall-bias,
       "color": $tableWall-color,
-      "cMask": ["ball", "c0", "c1", "c2", "c3"],
+      "cMask": ["ball"],
+      "cGroup": ["wall"]
+    },
+    "tableWallPlayers": {
+      "vis": false,
+      "bCoef": $tableWall-bCoef,
+      "color": $tableWall-color,
+      "cMask": ["c1"],
       "cGroup": ["wall"]
     },
     "tableWallCorner": {
       "bCoef": $tableWallCorner-bCoef,
       "color": $tableWall-color,
-      "cMask": ["ball", "c0", "c1", "c2", "c3"],
+      "cMask": ["ball", "c1"],
       "cGroup": ["wall"]
     },
     "tableWallGoalInner": {
       "vis": false,
       "bCoef": -4,
       "bias": -5,
-      "cMask": ["wall", "ball"],
+      "cMask": ["wall", "ball", "c1"],
       "cGroup": ["wall"]
     },
     "tableWallGoalInnerLaunch": {
       "vis": false,
       "bCoef": 4,
       "bias": 5,
-      "cMask": ["wall", "ball"],
+      "cMask": ["wall", "ball", "c1"],
       "cGroup": ["wall"]
     },
     "kickoffLine": {
@@ -136,20 +143,21 @@
       "color": $bgTable-color,
       "bCoef": 5,
       "bias": $tableBorder-bias,
-      "cMask": ["wall", "ball", "c0", "c1", "c2", "c3"],
+      "cMask": ["wall", "ball"],
       "cGroup": ["wall"]
     },
     "bgTableBorderOut": {
       "color": $bgTable-color,
       "bCoef": 5,
       "bias": -$tableBorder-bias,
-      "cMask": ["wall", "ball", "c0", "c1", "c2", "c3"],
+      "cMask": ["wall", "ball"],
       "cGroup": ["wall"]
     },
     "bgHole": {
       "radius": 20,
+      "invMass": 0,
       "color": "000000",
-      "cMask": [],
+      "cMask": ["c1"],
       "cGroup": ["wall"]
     },
     "bgIndicator": {
@@ -165,25 +173,25 @@
     "ballBoundary": {
       "vis": false,
       "bCoef": 0,
-      "cMask": ["ball", "c0", "c1", "c2", "c3"]
+      "cMask": ["ball"]
     },
     "railSide": {
       "vis": false,
       "bCoef": 10,
       "bias": -5,
-      "cMask": ["c0", "c1", "c2", "c3"]
+      "cMask": ["ball"]
     },
     "railStopRight": {
       "vis": false,
       "bCoef": 0,
       "bias": -$stop-bias,
-      "cMask": ["ball", "c0", "c1", "c2", "c3"]
+      "cMask": ["ball"]
     },
     "railStopLeft": {
       "vis": false,
       "bCoef": 0,
       "bias": $stop-bias,
-      "cMask": ["ball", "c0", "c1", "c2", "c3"]
+      "cMask": ["ball"]
     },
     "aimDisc": {
       "radius": 66,
@@ -192,7 +200,7 @@
       "color": "transparent",
       "bCoef": 0,
       "damping": 0,
-      "cMask": ["red", "blue"],
+      "cMask": ["c0"],
       "cGroup": ["ball"]
     }
   },
@@ -651,6 +659,13 @@
     { "v0": 161, "v1": 162, "trait": "tableWall" },
     { "v0": 163, "v1": 164, "trait": "tableWall" },
     { "v0": 165, "v1": 154, "trait": "tableWall" },
+
+    { "v0": 155, "v1": 156, "trait": "tableWallPlayers" },
+    { "v0": 157, "v1": 158, "trait": "tableWallPlayers" },
+    { "v0": 159, "v1": 160, "trait": "tableWallPlayers" },
+    { "v0": 161, "v1": 162, "trait": "tableWallPlayers" },
+    { "v0": 163, "v1": 164, "trait": "tableWallPlayers" },
+    { "v0": 165, "v1": 154, "trait": "tableWallPlayers" },
 
     // Table pockets (corners & lateral pits)
     { "v0": 154, "v1": 166, "trait": "tableWallCorner" },
