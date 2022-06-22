@@ -29,7 +29,7 @@
   "redSpawnPoints": [[-267, -89], [-312, -89]],
   "blueSpawnPoints": [[-267, 89], [-312, 89]],
 
-  "kickOffReset": "none",
+  "kickOffReset": "partial",
 
   // Background
   "bg": { "width": 388, "height": 209, "type": "none", "cornerRadius": 24, "kickOffRadius": 0, "color": "66202b" },
@@ -43,7 +43,8 @@
     "acceleration": 0.1,
     "kickingAcceleration": 0.5,
     "kickingDamping": 0.9,
-    "kickStrength": 50
+    "kickStrength": 50,
+    "cGroup": ["c0"]
   },
 
   // Main ball
@@ -55,6 +56,7 @@
   /*
   c0 = current player
   c1 = other players
+  c2 = kickOff
   */
   "traits": {
     "whiteBall": {
@@ -64,7 +66,7 @@
       "damping": 0.99,
       "color": "ffffe4",
       "cMask": ["wall", "ball", "c0"],
-      "cGroup": ["ball", "kick", "score"]
+      "cGroup": ["ball", "kick"]
     },
     "redBall": {
       "radius": 11,
@@ -91,48 +93,48 @@
       "damping": 0.99,
       "color": "181818",
       "cMask": ["wall", "ball"],
-      "cGroup": ["ball", "score"]
+      "cGroup": ["ball"]
     },
     "tableWall": {
       "bCoef": 0.6,
       "bias": -15,
       "color": "50161c",
-      "cMask": ["ball"],
+      "cMask": ["ball", "c1", "c2"],
       "cGroup": ["wall"]
     },
     "tableWallPlayers": {
       "vis": false,
       "bCoef": 0.6,
       "color": "50161c",
-      "cMask": ["c1"],
+      "cMask": ["c1", "c2"],
       "cGroup": ["wall"]
     },
     "tableWallCorner": {
       "bCoef": 0.45,
       "color": "50161c",
-      "cMask": ["ball", "c1"],
+      "cMask": ["ball", "c1", "c2"],
       "cGroup": ["wall"]
     },
     "tableWallGoalInner": {
       "vis": false,
       "bCoef": -4,
       "bias": -5,
-      "cMask": ["wall", "ball", "c1"],
+      "cMask": ["wall", "ball", "c1", "c2"],
       "cGroup": ["wall"]
     },
     "tableWallGoalInnerLaunch": {
       "vis": false,
       "bCoef": 4,
       "bias": 5,
-      "cMask": ["wall", "ball", "c1"],
+      "cMask": ["wall", "ball", "c1", "c2"],
       "cGroup": ["wall"]
     },
-    "kickoffLine": {
+    "kickOffLine": {
       "vis": false,
       "bCoef": 0.1,
       "color": "701e4e",
-      "cMask": ["red", "blue"],
-      "cGroup": ["redKO", "blueKO"]
+      "cMask": ["c2"], // (kickOff) red, blue
+      "cGroup": ["wall"] // redKO, blueKO
     },
     "bgTable": {
       "color": "2e1418",
@@ -157,7 +159,7 @@
       "radius": 20,
       "invMass": 0,
       "color": "000000",
-      "cMask": ["c1"],
+      "cMask": ["c1", "c2"],
       "cGroup": ["wall"]
     },
     "bgIndicator": {
@@ -257,8 +259,8 @@
   // Points
   "vertexes": [
     // Kickoff
-    /* 0 */ { "x": -178, "y": -179, "trait": "kickoffLine" },
-    /* 1 */ { "x": -178, "y": 175, "trait": "kickoffLine" },
+    /* 0 */ { "x": -178, "y": -179, "trait": "kickOffLine" },
+    /* 1 */ { "x": -178, "y": 175, "trait": "kickOffLine" },
 
     // Background: Table border
     // top
@@ -555,7 +557,7 @@
   // Lines
   "segments": [
     // Kickoff
-    { "v0": 0, "v1": 1, "trait": "kickoffLine" },
+    { "v0": 0, "v1": 1, "trait": "kickOffLine" },
 
     // Background: Table border
     // top
@@ -660,12 +662,10 @@
     { "v0": 163, "v1": 164, "trait": "tableWall" },
     { "v0": 165, "v1": 154, "trait": "tableWall" },
 
-    { "v0": 155, "v1": 156, "trait": "tableWallPlayers" },
-    { "v0": 157, "v1": 158, "trait": "tableWallPlayers" },
-    { "v0": 159, "v1": 160, "trait": "tableWallPlayers" },
-    { "v0": 161, "v1": 162, "trait": "tableWallPlayers" },
-    { "v0": 163, "v1": 164, "trait": "tableWallPlayers" },
-    { "v0": 165, "v1": 154, "trait": "tableWallPlayers" },
+    { "v0": 38, "v1": 39, "trait": "tableWallPlayers" },
+    { "v0": 76, "v1": 77, "trait": "tableWallPlayers" },
+    { "v0": 114, "v1": 115, "trait": "tableWallPlayers" },
+    { "v0": 152, "v1": 153, "trait": "tableWallPlayers" },
 
     // Table pockets (corners & lateral pits)
     { "v0": 154, "v1": 166, "trait": "tableWallCorner" },

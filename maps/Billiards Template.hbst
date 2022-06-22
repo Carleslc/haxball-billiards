@@ -43,7 +43,8 @@
     "acceleration": $player-acceleration,
     "kickingAcceleration": $player-kickingAcceleration,
     "kickingDamping": $player-kickingDamping,
-    "kickStrength": $player-kickStrength
+    "kickStrength": $player-kickStrength,
+    "cGroup": ["c0"]
   },
 
   // Main ball
@@ -55,6 +56,7 @@
   /*
   c0 = current player
   c1 = other players
+  c2 = kickOff
   */
   "traits": {
     "whiteBall": {
@@ -64,7 +66,7 @@
       "damping": $ball-damping,
       "color": "ffffe4",
       "cMask": ["wall", "ball", "c0"],
-      "cGroup": ["ball", "kick", "score"]
+      "cGroup": ["ball", "kick"]
     },
     "redBall": {
       "radius": $ball-radius,
@@ -91,48 +93,48 @@
       "damping": $ball-damping,
       "color": "181818",
       "cMask": ["wall", "ball"],
-      "cGroup": ["ball", "score"]
+      "cGroup": ["ball"]
     },
     "tableWall": {
       "bCoef": $tableWall-bCoef,
       "bias": $tableWall-bias,
       "color": $tableWall-color,
-      "cMask": ["ball"],
+      "cMask": ["ball", "c1", "c2"],
       "cGroup": ["wall"]
     },
     "tableWallPlayers": {
       "vis": false,
       "bCoef": $tableWall-bCoef,
       "color": $tableWall-color,
-      "cMask": ["c1"],
+      "cMask": ["c1", "c2"],
       "cGroup": ["wall"]
     },
     "tableWallCorner": {
       "bCoef": $tableWallCorner-bCoef,
       "color": $tableWall-color,
-      "cMask": ["ball", "c1"],
+      "cMask": ["ball", "c1", "c2"],
       "cGroup": ["wall"]
     },
     "tableWallGoalInner": {
       "vis": false,
       "bCoef": -4,
       "bias": -5,
-      "cMask": ["wall", "ball", "c1"],
+      "cMask": ["wall", "ball", "c1", "c2"],
       "cGroup": ["wall"]
     },
     "tableWallGoalInnerLaunch": {
       "vis": false,
       "bCoef": 4,
       "bias": 5,
-      "cMask": ["wall", "ball", "c1"],
+      "cMask": ["wall", "ball", "c1", "c2"],
       "cGroup": ["wall"]
     },
-    "kickoffLine": {
+    "kickOffLine": {
       "vis": false,
       "bCoef": 0.1,
-      "color": $kickoffLine-color,
-      "cMask": ["red", "blue"],
-      "cGroup": ["redKO", "blueKO"]
+      "color": $kickOffLine-color,
+      "cMask": $kickOffLine-mask, // (kickOff) red, blue
+      "cGroup": ["wall"] // redKO, blueKO
     },
     "bgTable": {
       "color": $bgTable-color,
@@ -157,7 +159,7 @@
       "radius": 20,
       "invMass": 0,
       "color": "000000",
-      "cMask": ["c1"],
+      "cMask": ["c1", "c2"],
       "cGroup": ["wall"]
     },
     "bgIndicator": {
@@ -257,8 +259,8 @@
   // Points
   "vertexes": [
     // Kickoff
-    /* 0 */ { "x": -178, "y": -179, "trait": "kickoffLine" },
-    /* 1 */ { "x": -178, "y": 175, "trait": "kickoffLine" },
+    /* 0 */ { "x": -178, "y": -179, "trait": "kickOffLine" },
+    /* 1 */ { "x": -178, "y": 175, "trait": "kickOffLine" },
 
     // Background: Table border
     // top
@@ -555,7 +557,7 @@
   // Lines
   "segments": [
     // Kickoff
-    { "v0": 0, "v1": 1, "trait": "kickoffLine" },
+    { "v0": 0, "v1": 1, "trait": "kickOffLine" },
 
     // Background: Table border
     // top
@@ -660,12 +662,10 @@
     { "v0": 163, "v1": 164, "trait": "tableWall" },
     { "v0": 165, "v1": 154, "trait": "tableWall" },
 
-    { "v0": 155, "v1": 156, "trait": "tableWallPlayers" },
-    { "v0": 157, "v1": 158, "trait": "tableWallPlayers" },
-    { "v0": 159, "v1": 160, "trait": "tableWallPlayers" },
-    { "v0": 161, "v1": 162, "trait": "tableWallPlayers" },
-    { "v0": 163, "v1": 164, "trait": "tableWallPlayers" },
-    { "v0": 165, "v1": 154, "trait": "tableWallPlayers" },
+    { "v0": 38, "v1": 39, "trait": "tableWallPlayers" },
+    { "v0": 76, "v1": 77, "trait": "tableWallPlayers" },
+    { "v0": 114, "v1": 115, "trait": "tableWallPlayers" },
+    { "v0": 152, "v1": 153, "trait": "tableWallPlayers" },
 
     // Table pockets (corners & lateral pits)
     { "v0": 154, "v1": 166, "trait": "tableWallCorner" },

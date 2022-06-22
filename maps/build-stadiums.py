@@ -90,6 +90,23 @@ def build_stadium(stadium):
   else:
     write_output(f'stadiums/{stadium}.hbs', contents)
 
+def bot_maps(stadiums):
+  mappings = [];
+
+  for stadium in stadiums:
+    defaultName = stadium.upper().replace(' ', '_')
+
+    name = CONFIG['tags'].get(stadium, defaultName) if 'tags' in CONFIG else defaultName
+
+    with open(f'output/{stadium}.hbs', 'r') as raw_stadium_file:
+      raw_stadium = raw_stadium_file.read()
+      mappings.append((name, raw_stadium))
+
+  maps_values = ',\n\n  '.join(map(lambda mapping: f'{mapping[0]}: `{mapping[1]}`', mappings))
+  maps = f'const MAPS = {{\n  {maps_values}\n}};'
+
+  write_output('output/bot-maps.js', maps);
+
 if __name__ == "__main__":
   global CONFIG
 
@@ -97,6 +114,11 @@ if __name__ == "__main__":
 
   with open(args.config, 'r') as config:
     CONFIG = yaml.full_load(config)
+  
+  stadiums = CONFIG['stadiums']
 
-  for stadium in CONFIG['stadiums']:
+  for stadium in stadiums:
     build_stadium(stadium)
+
+  if args.raw:
+    bot_maps(stadiums)

@@ -10,6 +10,12 @@ stadiums:
   - Billiards Tournament
   - Billiards Carambola
 
+tags:
+  Billiards: DEFAULT
+  Billiards Practice: PRACTICE
+  Billiards Tournament: TOURNAMENT
+  Billiards Carambola: CARAMBOLA
+
 # diameter = 2.25 in = 5.71 cm
 # mass = 6 oz = ~170.1 g
 
@@ -40,8 +46,9 @@ variables:
     bgTable-color: 2e1418
     red-spawn: [[-267, -89], [-312, -89]]
     blue-spawn: [[-267, 89], [-312, 89]]
-    kickOffReset: none
-    kickoffLine-color: 085849
+    kickOffReset: partial
+    kickOffLine-mask: [c2]
+    kickOffLine-color: 085849
     tableWall-bCoef: 0.5
     tableWall-bias: -6
     tableWall-color: '163433'
@@ -64,7 +71,8 @@ variables:
     bgTable-color: 3f261e
     bgIndicator-color: b59978
     tableWall-color: 084e45
-    kickoffLine-color: '085849'
+    kickOffLine-color: '085849'
+    kickOffLine-mask: []
     kickOffReset: full
     red-spawn: [[-267, 0], [-267, -45]]
     blue-spawn: [[-312, 0], [-312, -45]]
@@ -84,7 +92,7 @@ variables:
     bg-color: 066bb5
     bgTable-color: '202831'
     bgIndicator-color: fffff4
-    kickoffLine-color: 145e9e
+    kickOffLine-color: 145e9e
     tableWall-color: 145e9e
     tableWall-bCoef: 0.52
 
@@ -95,7 +103,7 @@ variables:
     bg-color: 66202b
     bgTable-color: 2e1418
     bgIndicator-color: ffffe4
-    kickoffLine-color: 701e4e
+    kickOffLine-color: 701e4e
     tableWall-color: 50161c
     tableWall-bCoef: 0.6
     tableWall-bias: -15
