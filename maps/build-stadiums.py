@@ -103,9 +103,11 @@ def bot_maps(stadiums):
       mappings.append((name, raw_stadium))
 
   maps_values = ',\n\n  '.join(map(lambda mapping: f'{mapping[0]}: `{mapping[1]}`', mappings))
-  maps = f'const MAPS = {{\n  {maps_values}\n}};'
+  maps = f'const MAPS = {{\n  {maps_values}\n}};\n'
 
-  write_output('output/bot-maps.js', maps);
+  banner = '// Source: haxball-billiards/maps\n// Generated with: python build-stadiums.py billiards.yml --raw';
+
+  write_output('../bot/src/maps.js', f'{banner}\n\n{maps}');
 
 if __name__ == "__main__":
   global CONFIG

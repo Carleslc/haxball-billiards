@@ -1,6 +1,35 @@
 # Bot
 
+## Development
 
+### Install
+
+#### **[`node`](https://nodejs.org/es/download/) & [`npm`](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm)**
+
+#### **[`grunt`](https://gruntjs.com/)**
+
+```
+npm install -g grunt-cli
+npm install
+```
+
+### Build
+
+`grunt`
+
+- **output/haxball-billiards.dev.js** : src files concatenated
+- **output/haxball-billiards.min.js** : src files concatenated and minified
+
+### Deploy
+
+#### Headless Host
+
+1. Open the [Headless Host](https://html5.haxball.com/headless).
+2. Cmd+Options+J (Open DevTools Console)
+3. Copy & Paste `output/haxball-billiards.dev.js` or `output/haxball-billiards.min.js`
+4. Solve reCaptcha
+5. Join the room with the link provided
+6. Your room will be open as long as you have the Headless Host tab opened
 
 ## Resources
 

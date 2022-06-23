@@ -1,8 +1,11 @@
+# System
+.DS_Store
+
 # Python
 __pycache__/
 
-# System
-.DS_Store
+# Node
+node_modules/
 
 # Script output files
 output/
