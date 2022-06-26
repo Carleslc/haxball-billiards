@@ -1,8 +1,7 @@
 /* Room Configuration */
 
-if (typeof room === "undefined") {
-  var room; // RoomConfigObject https://github.com/haxball/haxball-issues/wiki/Headless-Host#roomconfigobject
-}
+/** @type {import("haxball-types").Room} */
+let room; // RoomConfigObject https://github.com/haxball/haxball-issues/wiki/Headless-Host#roomconfigobject
 
 let URL;
 
@@ -12,41 +11,50 @@ let N_PLAYERS; // number of players in the room
 let TEAMS; // team id to team player list
 
 function init() {
-  if (room === undefined) {
-    room = HBInit({
-      roomName: ROOM,
-      maxPlayers: MAX_PLAYERS,
-      noPlayer: !HOST_PLAYER,
-      playerName: HOST_PLAYER,
-      public: PUBLIC_ROOM,
-      password: PASSWORD,
-      token: TOKEN,
-      geo: GEOCODE,
-    });
+  const loaded = typeof HBInit !== 'undefined';
+
+  if (loaded) {
+    if (room === undefined) {
+      room = HBInit({
+        roomName: ROOM,
+        maxPlayers: MAX_PLAYERS,
+        noPlayer: !HOST_PLAYER,
+        playerName: HOST_PLAYER,
+        public: PUBLIC_ROOM,
+        password: PASSWORD,
+        token: TOKEN,
+        geo: GEOCODE
+      });
+    }
+
+    setRoomHandlers();
+  
+    room.setScoreLimit(SCORE_LIMIT);
+    room.setTimeLimit(TIME_LIMIT);
+    room.setTeamsLock(TEAMS_LOCK);
+  
+    // room.setRequireRecaptcha(true);
+  
+    selectMap(DEFAULT_MAP);
+  
+    updateIsPlaying();
+    updatePlayersLength();
+  
+    setHostRandomAvatar();
+  
+    updateTeams();
+  
+    LOG.info('✅ Room loaded');
+  } else {
+    window.onHBLoaded = init;
   }
 
-  setRoomHandlers();
-
-  room.setScoreLimit(SCORE_LIMIT);
-  room.setTimeLimit(TIME_LIMIT);
-  room.setTeamsLock(TEAMS_LOCK);
-
-  // room.setRequireRecaptcha(true);
-
-  selectMap(DEFAULT_MAP);
-
-  updateIsPlaying();
-  updatePlayersLength();
-
-  setHostRandomAvatar();
-
-  TEAMS = getTeams();
   return room;
 }
 
 function onRoomLink(url) {
   URL = url;
-  console.log(URL);
+  LOG.info(URL);
 }
 
 function isPlaying() {
@@ -61,16 +69,25 @@ function updatePlayersLength() {
   N_PLAYERS = getPlayers().length;
 }
 
+function updateTeams(teams) {
+  if (!teams) {
+    teams = getTeams();
+  }
+  TEAMS = teams;
+  LOG.debug('TEAMS updated:', getCaller(updateTeams));
+}
+
 function startGame(delay = false) {
   if (!PLAYING) {
     setTeams();
 
     const caller = getCaller(startGame);
-    const delaySeconds = delay && N_PLAYERS > 1 ? WAIT_GAME_START_SECONDS : 0;
+    const players = activePlayers().length;
+    const delaySeconds = delay && players > 1 ? WAIT_GAME_START_SECONDS : 0;
 
     setTimeout(() => {
       if (playersInGameLength()) {
-        console.log(caller, "-> startGame");
+        LOG.debug(caller, "-> startGame");
         room.startGame();
       }
     }, delaySeconds * 1000);
@@ -79,7 +96,7 @@ function startGame(delay = false) {
 
 function stopGame() {
   if (PLAYING) {
-    console.log(getCaller(stopGame), "-> stopGame");
+    LOG.debug(getCaller(stopGame), "-> stopGame");
     room.stopGame();
   }
 }
@@ -115,4 +132,4 @@ function setRoomHandlers() {
 }
 
 // Start room
-room = init();
+init();

@@ -216,8 +216,6 @@ function setVoteRules(player, args) {
   if (args.length > 0) {
     const rules = args[0];
 
-    console.log('rules', rules);
-
     if (player.admin && isForce(args)) {
       const set = setRules(rules, player.name);
 
@@ -269,7 +267,7 @@ function setRules(rules, by) {
   rules = rules.toUpperCase();
 
   if (rules in SET_RULES) {
-    console.log('setRules', rules, by);
+    LOG.info('setRules', rules, by);
 
     RULES_ENABLED = rules !== 'DISABLE';
     USE_EXTENDED_RULES = rules === 'EXTENDED';
@@ -415,11 +413,11 @@ function onPlayerChat(player, msg) {
     args.splice(0, 1); // remove command from args
 
     if (command in COMMAND_HANDLERS) {
-      console.log(`${player.name} -> !${command} ${args.join(' ')}`);
+      LOG.debug(`${player.name} -> !${command} ${args.join(' ')}`);
 
       COMMAND_HANDLERS[command](player, args);
     } else {
-      info('Invalid command. Use !help for more information', player, COLOR.ERROR);
+      info("Invalid command. Use !help for more information", player, COLOR.ERROR);
     }
 
     return false;
@@ -432,5 +430,7 @@ function onPlayerChat(player, msg) {
         'And you can also order me a drink, see !help for more information'
       ], player);
     }, 1000);
+  } else if (msg === 'help') {
+    info("To know the available commands use !help", player);
   }
 }

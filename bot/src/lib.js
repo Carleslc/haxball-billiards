@@ -27,7 +27,7 @@ const COLOR = {
 function send(msg, targetId, color, style, sound, announcement) {
   if (typeof msg === 'string' && msg.trim().length > 0) {
     if (targetId === null) {
-      console.log(msg);
+      LOG.debug(msg);
     }
     if (announcement || !HOST_PLAYER) {
       room.sendAnnouncement(msg, targetId, color, style, sound);
@@ -121,6 +121,8 @@ function getTeamName(team) {
 
 function setPlayerTeam(player, team) {
   if (player.team !== team) {
+    LOG.debug('setPlayerTeam', player.name, player.team, '->', team);
+    CHANGING_TEAMS.add(player.id);
     room.setPlayerTeam(player.id, team);
     player.team = team;
   }
@@ -131,10 +133,8 @@ function movePlayerToSpectator(player) {
 }
 
 function movePlayersToSpectators() {
-  if (TEAMS[TEAM.SPECTATOR].length > 0) {
-    TEAMS[TEAM.RED].forEach(movePlayerToSpectator);
-    TEAMS[TEAM.BLUE].forEach(movePlayerToSpectator);
-  }
+  TEAMS[TEAM.RED].forEach(movePlayerToSpectator);
+  TEAMS[TEAM.BLUE].forEach(movePlayerToSpectator);
 }
 
 /* Host */
@@ -198,7 +198,7 @@ function playersOutOfTurn() {
 /* Balls */
 
 function getBall(ballIndex) {
-  return typeof ballIndex === 'number' ? room.getDiscProperties(ballIndex) : undefined;
+  return room.getDiscProperties(ballIndex);
 }
 
 function getBalls(ballIndexes) {
@@ -207,15 +207,17 @@ function getBalls(ballIndexes) {
 
 function isBallMoving(ballIndex) {
   const ball = getBall(ballIndex);
-  return ball ? (ball.xspeed > 0 || ball.yspeed > 0) : false;
+  return (Math.abs(ball.xspeed) > MIN_SPEED_THRESHOLD || Math.abs(ball.yspeed) > MIN_SPEED_THRESHOLD) && inPlayingArea(ball);
 }
 
 function moveBall(ballIndex, pos) {
-  room.setDiscProperties(ballIndex, {
-    xpeed: 0,
+  const props = {
+    xspeed: 0,
     yspeed: 0,
     ...pos,
-  });
+  };
+  room.setDiscProperties(ballIndex, props);
+  LOG.debug('moveBall', ballIndex, props);
 }
 
 /* Collision Flags (bitwise) */

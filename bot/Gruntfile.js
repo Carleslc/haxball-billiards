@@ -1,6 +1,6 @@
 module.exports = function(grunt) {
 
-  const src = sources(['settings', 'maps', 'lib', 'utils', 'bot', 'game', 'commands', 'room']);
+  const src = sources(['settings', 'maps', 'utils', 'lib', 'bot', 'game', 'commands', 'room']);
 
   const banner = '/*! <%= pkg.name %> <%= pkg.version %> (<%= grunt.template.today("dd/mm/yyyy") %>) */\n';
   
@@ -18,7 +18,7 @@ module.exports = function(grunt) {
         },
         src,
         dest: concatDev,
-        nonnull: true,
+        nonull: true,
       },
       prod: {
         options: {
@@ -40,10 +40,12 @@ module.exports = function(grunt) {
       }
     },
     clean: {
-      build: [concatProd]
+      prod: [concatProd],
+      all: ['output/']
     },
     log: {
-      output: [concatDev, minified]
+      dev: concatDev,
+      prod: minified
     },
   });
 
@@ -57,12 +59,11 @@ module.exports = function(grunt) {
   });
 
   // Default tasks
-  grunt.registerTask('default', [
-    'concat',
-    'uglify',
-    'clean',
-    'log'
-  ]);
+  grunt.registerTask('default', ['concat:prod', 'uglify', 'clean:prod', 'log:prod']);
+
+  // Dev tasks
+  grunt.registerTask('dev', ['concat:dev', 'log:dev']);
+  grunt.registerTask('clear', ['clean:all']);
 
   function log(text) {
     if (text instanceof Array) {

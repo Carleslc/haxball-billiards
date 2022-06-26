@@ -1,21 +1,20 @@
 /* Settings */
 
-const TOKEN = null; // https://www.haxball.com/headlesstoken
+const TOKEN = ''; // https://www.haxball.com/headlesstoken
 
-const ROOM = "🎱  ⚪️⩴ ⚜️ Billiards Pub ⚜️ 🔴🔵 𓀙 [ßETA]";
+const ROOM = "🎱  ⚪️⩴ ⚜️ Billiards Pub ⚜️ 🔴🔵 𓀙 [αlpha]"; // ßETA on server
 const MAX_PLAYERS = 8;
 const HOST_PLAYER = '🤵🏽‍♂️ Bart'; // Bartender
 const PUBLIC_ROOM = false;
 const PASSWORD = null;
 const GEOCODE = { code: '', lat: 40.416729, long: -3.703339 };
 
-const SCORE_LIMIT = 0; // goals to win the game, 0 for infinite
+const SCORE_LIMIT = 8; // goals to win the game, 0 for infinite
 const TIME_LIMIT = 0; // max minutes per game, 0 for infinite
 const TEAMS_LOCK = true; // block players from joining teams manually?
 
 const TEAM_LIMIT = 2; // maximum players per team in a game
-const AFTER_TURN_SECONDS = 5; // delay to move current player after kicking the ball (balls are moving after shot)
-const TURN_MAX_SECONDS = 65; // max seconds to kick the ball or change player turn
+const TURN_MAX_SECONDS = 60; // max seconds to kick the ball or change player turn
 const TURN_SECONDS_WARNING = 10; // warning before turn is expired
 const AFK_PLAYING_SECONDS = 45; // max seconds of being inactive in your turn before moving to spectators
 const AFK_SECONDS_WARNING = 10; // warning before being moved to spectators due to inactivity
@@ -23,6 +22,8 @@ const MAX_FULL_AFK_MINUTES = 15; // max minutes of being inactive when the room 
 const NEW_GAME_DELAY_SECONDS = 10; // seconds to wait until next game starts when changing a map if there is people playing
 const GAME_OVER_DELAY_SECONDS = 5; // seconds to wait until next game starts when the game finishes
 const WAIT_GAME_START_SECONDS = 1; // seconds to wait to start a game
+
+const MIN_SPEED_THRESHOLD = 0.02; // minimum speed to decide if a ball is still
 
 const WAIT_DRINK_MINUTES = 10; // minimum minutes between ordering a drink
 const DRINK_PREPARATION_SECONDS = 3; // seconds of drink preparation until player's avatar is set
@@ -41,7 +42,8 @@ const RULES = `
   ⚫️ Scoring black must be the last one or you lose
   ⚪️ Scoring white is foul
 
-  ❌🟰2️⃣ Fouls are 2 turns for the opponent's team (if they do not commit another foul)
+  ❌🟰2️⃣ Fouls are 2 turns for the opponent's team
+  ❕ Only if both teams have color balls remaining and if they do not commit another foul
 
   🔰 If you want to know the optional extended rules, use !rules full
 `.slice(1);
@@ -49,13 +51,23 @@ const RULES = `
 const EXTENDED_RULES = `
   📜 EXTENDED RULES 📜
   🌀 Foul when you do not touch any ball of your team
-  🔘❔ Foul when you touch first a ball of opponent's team
+  🔘❔ Foul when you touch first a ball of opponent's team or the black ball
   〰️❕ Foul if you shot the ball when balls are still moving
   ⚪️➡️ After scoring the white ball you must shot to the right, from the 1/4 left part of the table (kickoff area)
   ⚫️↔️↕️ Black, the last ball, must be scored in the opposite hole of your last scored ball. You lose scoring in another hole.
-  ⚫️⚪️❗️ You lose if you score both black and white balls with the same shot
+  ⚪️⚫️❗️ You lose if you score black ball right after the white ball with the same shot
   
   ✳️ To play with extended rules use !setrules disable (these rules are not yet enforced by the bot)
+`.slice(1);
+
+const TOURNAMENT_RULES = `
+  📜 TOURNAMENT RULES 📜
+  🌀 Foul when you do not touch any ball of your team
+  🔘❔ Foul when you touch first a ball of opponent's team or the black ball
+  〰️❕ Foul if you shot the ball when balls are still moving
+  ⚪️⚫️❗️ You lose if you score black ball right after the white ball with the same shot
+
+  ✳️ To play with tournament rules use !setrules tournament
 `.slice(1);
 
 const DRINKS = {
@@ -75,8 +87,8 @@ const DRINKS_ALIASES = {
   whiskey: 'whisky'
 };
 
+const DRINK_MENU = Object.keys(DRINKS).map(drink => `!${drink}`).join(' ');
+
 Object.entries(DRINKS_ALIASES).forEach(([alias, drink]) => {
   DRINKS[alias] = DRINKS[drink];
 });
-
-const DRINK_MENU = Object.keys(DRINKS).map(drink => `!${drink}`).join(' ');

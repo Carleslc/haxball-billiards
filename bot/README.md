@@ -17,8 +17,15 @@ npm install
 
 `grunt`
 
-- **output/haxball-billiards.dev.js** : src files concatenated
-- **output/haxball-billiards.min.js** : src files concatenated and minified
+**output/haxball-billiards.min.js** : src files concatenated and minified
+
+`grunt dev`
+
+**output/haxball-billiards.dev.js** : src files concatenated, not minified only for debugging purposes
+
+`grunt clear`
+
+Delete `output` folder.
 
 ### Deploy
 
