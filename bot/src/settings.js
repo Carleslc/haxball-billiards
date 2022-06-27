@@ -2,7 +2,7 @@
 
 const TOKEN = ''; // https://www.haxball.com/headlesstoken
 
-const ROOM = "🎱  ⚪️⩴ ⚜️ Billiards Pub ⚜️ 🔴🔵 𓀙 [αlpha]"; // ßETA on server
+const ROOM = "🎱  ⚪️⩴ ⚜️ Billiards Pub ⚜️ 🔴🔵 𓀙 [αlpha]"; // ßETA: strength control, aim selection, all rules implemented // RELEASE: 1 week of server hosting without errors
 const MAX_PLAYERS = 8;
 const HOST_PLAYER = '🤵🏽‍♂️ Bart'; // Bartender
 const PUBLIC_ROOM = false;
@@ -29,46 +29,13 @@ const WAIT_DRINK_MINUTES = 10; // minimum minutes between ordering a drink
 const DRINK_PREPARATION_SECONDS = 3; // seconds of drink preparation until player's avatar is set
 
 const DEFAULT_MAP = 'DEFAULT'; // default game map from maps.js
+const DEFAULT_RULESET = 'NORMAL'; // default ruleset to use
+
 const HOST_POSITION = [-455, -10]; // host player position if moved to the game
 
 const ADMINS = new Set([
   'vI7tm0KUTB-rwz5nPorf47_ZTUarz8kX4EMC-a0RmbU', // kslar
 ]);
-
-const RULES = `
-  𓀙 One shot each player
-  🔴🔵 Score the balls with the same color as your player
-  🏵 If you score you shot again
-  ⚫️ Scoring black must be the last one or you lose
-  ⚪️ Scoring white is foul
-
-  ❌🟰2️⃣ Fouls are 2 turns for the opponent's team
-  ❕ Only if both teams have color balls remaining and if they do not commit another foul
-
-  🔰 If you want to know the optional extended rules, use !rules full
-`.slice(1);
-
-const EXTENDED_RULES = `
-  📜 EXTENDED RULES 📜
-  🌀 Foul when you do not touch any ball of your team
-  🔘❔ Foul when you touch first a ball of opponent's team or the black ball
-  〰️❕ Foul if you shot the ball when balls are still moving
-  ⚪️➡️ After scoring the white ball you must shot to the right, from the 1/4 left part of the table (kickoff area)
-  ⚫️↔️↕️ Black, the last ball, must be scored in the opposite hole of your last scored ball. You lose scoring in another hole.
-  ⚪️⚫️❗️ You lose if you score black ball right after the white ball with the same shot
-  
-  ✳️ To play with extended rules use !setrules disable (these rules are not yet enforced by the bot)
-`.slice(1);
-
-const TOURNAMENT_RULES = `
-  📜 TOURNAMENT RULES 📜
-  🌀 Foul when you do not touch any ball of your team
-  🔘❔ Foul when you touch first a ball of opponent's team or the black ball
-  〰️❕ Foul if you shot the ball when balls are still moving
-  ⚪️⚫️❗️ You lose if you score black ball right after the white ball with the same shot
-
-  ✳️ To play with tournament rules use !setrules tournament
-`.slice(1);
 
 const DRINKS = {
   water: ['🧊💧 There you go, a glass of fresh water.', '💧🥤 You are thirsty, I see!', '💧 Yeah, a cup of water is best for a good billiards game.'],

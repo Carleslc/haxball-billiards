@@ -28,7 +28,7 @@ let CURRENT_MAP, NEXT_MAP; // map name
 let CURRENT_MAP_OBJECT, NEXT_MAP_OBJECT; // map object (parsed json)
 
 let SELECTING_MAP_TASK; // map selection task
-const VOTES = {}; // map to set of player ids
+const MAP_VOTES = {}; // map to set of player ids
 
 let TURN_TIME; // current turn player elapsed time in ticks
 
@@ -48,19 +48,111 @@ let BLUE_BALLS, RED_BALLS;
 let BALL_RADIUS, PLAYER_RADIUS;
 let WHITE_BALL_SPAWN, BLACK_BALL_SPAWN; // initial positions
 
+// Where to stack the scored colored balls
+let STACK_COLOR_SIDE_RED;
+let STACK_COLOR_SIDE_BLUE;
+let STACK_SIDE_HEIGHT; // height of the scored colored balls stack
+
 let PLAYING_AREA; // { x: { min, max }, y: { min, max } }
 
 // Rules settings
-const SET_RULES = { // rules to set of player ids
-  DISABLE: new Set(),
-  NORMAL: new Set(),
-  // EXTENDED: new Set(),
-  // TOURNAMENT: new Set()
-};
-let RULES_ENABLED = true; // enforce rules?
-let USE_EXTENDED_RULES = false; // playing with extended rules?
 
-const AVAILABLE_RULES = Object.keys(SET_RULES).map(m => m.toLowerCase()).join(', ');
+class Rule {
+  constructor(id, icon, description, implemented = true) {
+    this.id = id;
+    this.icon = icon;
+    this.description = description;
+    this.implemented = implemented;
+  }
+  toString() {
+    return `${this.icon}  ${this.description}`;
+  }
+}
+
+const RULES = rulesMapping([
+  new Rule('ONE_SHOT_EACH_PLAYER', '𓀙', 'One shot each player'),
+  new Rule('SCORE_PLAYER_COLOR', '🔴🔵', 'Score the balls with the same color as your player'),
+  new Rule('EXTRA_SHOT_IF_SCORED', '🏵', 'If you score you shot again'),
+  new Rule('BLACK_LAST', '🎱', 'Scoring black must be the last one or you lose'),
+  new Rule('WHITE_FOUL', '⚪️', 'Scoring white is foul'),
+  new Rule('FOUL_IF_MISS', '🌀', 'Foul when you do not touch any ball of your team', false),
+  new Rule('FOUL_WRONG_FIRST_BALL', '🔘❔', "Foul when you touch first a ball of opponent's team or the black ball", false),
+  new Rule('FOUL_BALLS_MOVING', '〰️❕', 'Foul if you shot the ball when balls are still moving'),
+  new Rule('KICKOFF_RIGHT', '⚪️➡️', 'After scoring the white ball you must shot to the right, from the 1/4 left part of the table (kickoff area)'),
+  new Rule('BLACK_OPPOSITE_HOLE', '⚫️↔️↕️', 'Black, the last ball, must be scored in the opposite hole of your last scored ball. You lose scoring in another hole.', false),
+  new Rule('BLACK_AFTER_WHITE_LOSE', '⚪️⚫️❗️', 'You lose if you score black ball right after the white ball with the same shot'),
+]);
+
+const RULESETS = { // ruleset name to set of rules
+  NORMAL: [
+    RULES.ONE_SHOT_EACH_PLAYER,
+    RULES.SCORE_PLAYER_COLOR,
+    RULES.EXTRA_SHOT_IF_SCORED,
+    RULES.BLACK_LAST,
+    RULES.WHITE_FOUL,
+  ],
+};
+RULESETS.EXTENDED = [
+  ...RULESETS.NORMAL,
+  RULES.FOUL_IF_MISS,
+  RULES.FOUL_WRONG_FIRST_BALL,
+  RULES.FOUL_BALLS_MOVING,
+  RULES.KICKOFF_RIGHT,
+  RULES.BLACK_OPPOSITE_HOLE,
+  RULES.BLACK_AFTER_WHITE_LOSE,
+];
+RULESETS.TOURNAMENT = [
+  ...RULESETS.NORMAL,
+  RULES.FOUL_IF_MISS,
+  RULES.FOUL_WRONG_FIRST_BALL,
+  RULES.FOUL_BALLS_MOVING,
+  RULES.KICKOFF_RIGHT,
+  RULES.BLACK_AFTER_WHITE_LOSE,
+];
+RULESETS.DISABLE = [];
+
+let USING_RULES; // active rules { rule.id: rule }
+let USING_RULESET; // active ruleset
+
+const RULESET_VOTES = {}; // ruleset to set of player ids
+
+Object.keys(RULESETS).forEach(ruleset => {
+  RULESET_VOTES[ruleset] = new Set();
+});
+
+const AVAILABLE_RULESETS = Object.keys(RULESETS).filter(r => {
+  return r !== 'TOURNAMENT'; // hidden
+}).map(r => r.toLowerCase()).join(', ');
+
+function notImplementedRules(ruleset) {
+  return RULESETS[ruleset].filter(rule => !rule.implemented);
+}
+
+function rulesMapping(listOfRules) {
+  const rules = {};
+
+  listOfRules.forEach(rule => {
+    rules[rule.id] = rule;
+  });
+
+  return rules;
+}
+
+function getRuleset(ruleset) {
+  if (!ruleset) {
+    return null;
+  }
+  
+  ruleset = ruleset.toUpperCase();
+
+  if (ruleset === 'FULL') {
+    ruleset = 'EXTENDED';
+  } else if (ruleset === 'DEFAULT' || ruleset === 'AUTO') {
+    ruleset = 'NORMAL';
+  }
+
+  return ruleset in RULESETS ? ruleset : null;
+}
 
 function loadMapProperties() {
   if (CURRENT_MAP_OBJECT) {
@@ -80,6 +172,14 @@ function loadMapProperties() {
 
     WHITE_BALL_SPAWN = position(discs[WHITE_BALL].pos);
     BLACK_BALL_SPAWN = position(discs[BLACK_BALL].pos);
+
+    const stackSideCenterX = 45;
+    const railStopLeft = CURRENT_MAP_OBJECT.vertexes.find(vertex => vertex.trait === 'railStopLeft');
+    const railStopRight = CURRENT_MAP_OBJECT.vertexes.find(vertex => vertex.trait === 'railStopRight');
+    
+    STACK_SIDE_HEIGHT = (2 * BALL_RADIUS) * 10;
+    STACK_COLOR_SIDE_RED = position(railStopLeft.x + stackSideCenterX, railStopLeft.y - STACK_SIDE_HEIGHT);
+    STACK_COLOR_SIDE_BLUE = position(railStopRight.x - stackSideCenterX, railStopRight.y - STACK_SIDE_HEIGHT);
 
     const holes = discs.filter(disc => disc.trait === 'bgHole');
     const holesX = holes.map(hole => hole.pos[0]);
@@ -140,6 +240,7 @@ function selectMap(name) {
     if (CURRENT_MAP_OBJECT === undefined) {
       CURRENT_MAP_OBJECT = JSON.parse(stadium);
     }
+
     loadMapProperties();
   }
   return CURRENT_MAP_OBJECT;
@@ -159,33 +260,36 @@ function nextMap(name) {
   return NEXT_MAP_OBJECT;
 }
 
-function startNextMap(name, by) {
+function selectNextMap(name, by, restart = true) {
   name = name.toUpperCase();
 
   let mapObject = nextMap(name);
-
-  let message = `Next map is ${mapObject.name}, set by ${by}.`;
-
-  const delaySeconds = PLAYING && playersInGameLength() > 1 ? NEW_GAME_DELAY_SECONDS : 0;
-
-  if (delaySeconds > 0) {
-    message += ` Current game will be stopped in ${delaySeconds} seconds...`;
-  }
   
-  notify(message);
+  if (CURRENT_MAP !== name) {
+    let message = `Next map is ${mapObject.name}, set by ${by}.`;
   
-  if (PLAYING) {
-    SELECTING_MAP_TASK = setTimeout(() => {
-      stopGame();
-      SELECTING_MAP_TASK = undefined;
-    }, delaySeconds * 1000);
-  } else {
-    chooseMap();
+    const delaySeconds = PLAYING && restart && playersInGameLength() > 1 ? NEW_GAME_DELAY_SECONDS : 0;
+  
+    if (delaySeconds > 0) {
+      message += ` Current game will be stopped in ${delaySeconds} seconds...`;
+    }
+    
+    notify(message);
+    
+    if (PLAYING && restart) {
+      SELECTING_MAP_TASK = setTimeout(() => {
+        stopGame();
+        SELECTING_MAP_TASK = undefined;
+      }, delaySeconds * 1000);
+    } else {
+      chooseMap();
+    }
   }
 }
 
-function isPractice() {
-  return CURRENT_MAP === 'PRACTICE';
+function resetNextMap() {
+  NEXT_MAP = undefined;
+  NEXT_MAP_OBJECT = undefined;
 }
 
 function chooseMap() {
@@ -196,22 +300,21 @@ function chooseMap() {
   if (N_PLAYERS != previousPlayers) {
     LOG.debug(`${previousPlayers} -> ${N_PLAYERS} players in the room (Playing: ${PLAYING})`);
   }
+  if (!N_PLAYERS) {
+    resetMapVoting();
+    resetRulesVoting();
+  }
 
   const noAfk = activePlayers().length;
 
   if (PLAYING) {
-    if (NEXT_MAP !== CURRENT_MAP && noAfk >= 2 && isPractice()) {
+    if (NEXT_MAP !== CURRENT_MAP && noAfk >= 2 && (playersInGameLength() === 1 || CURRENT_MAP === 'PRACTICE')) {
       stopGame();
       return true;
     }
   } else if (SELECTING_MAP_TASK === undefined) {
     if (NEXT_MAP) {
       selectMap(NEXT_MAP);
-
-      if (NEXT_MAP === DEFAULT_MAP) {
-        NEXT_MAP = undefined;
-        NEXT_MAP_OBJECT = undefined;
-      }
     } else if (N_PLAYERS === 1 || noAfk === 1) {
       selectMap('PRACTICE');
     } else if (noAfk > 0) {
@@ -233,14 +336,14 @@ function chooseMap() {
 }
 
 function updateCurrentPlayer({ changeTeam = true, delayMove = false, foul = false } = {}) {
-  if (N_PLAYERS === 0) {
+  if (!N_PLAYERS) {
     resetCurrentPlayer();
   } else if (delayMove) {
     onBallsStatic(`${getCaller(updateCurrentPlayer)} -> updateCurrentPlayer`, () => {
       updateCurrentPlayer({ changeTeam, delayMove: false, foul });
     });
   } else if (foul || (!FOUL && (!EXTRA_SHOTS || !CURRENT_PLAYER))) {
-    if (RULES_ENABLED) {
+    if (USING_RULES.ONE_SHOT_EACH_PLAYER) {
       const previousTurnPlayer = CURRENT_PLAYER;
 
       if (changeTeam) {
@@ -265,15 +368,21 @@ function updateCurrentPlayer({ changeTeam = true, delayMove = false, foul = fals
             LOG.debug('CURRENT_PLAYER', CURRENT_PLAYER, 'EXTRA_SHOTS', EXTRA_SHOTS);
         
             if (playersInGameLength() > 1) {
-              info(`Turn ${getTeamIcon(CURRENT_TEAM)} ${CURRENT_PLAYER.name}`);
-              
+              let turnInfo = `Turn ${getTeamIcon(CURRENT_TEAM)} ${CURRENT_PLAYER.name}`;
+
               if (foul) {
-                extraShotsInfo();
+                turnInfo += `  (${EXTRA_SHOTS} ${EXTRA_SHOTS !== 1 ? 'shots' : 'shot'})`;
               }
+
+              info(turnInfo);
             }
           }
           
-          moveCurrentPlayer(!isPractice());
+          const practice = playersInGameLength() === 1;
+          
+          if (!practice || !playerInPlayingArea(CURRENT_PLAYER)) {
+            moveCurrentPlayer(!practice);
+          }
           
           onBallsStatic('nextTurnWaitForShot', () => enableGoals(false));
         }
@@ -326,7 +435,7 @@ function resetCurrentPlayer() {
 
 function updatePlayerCollisions(player) {
   // Add kickOff flag to cGroup only for extended rules or first shot (kickOffLine barrier)
-  const updateKickOffFlag = (KICKOFF && RULES_ENABLED && (USE_EXTENDED_RULES || !SHOTS)) ? addFlag : removeFlag;
+  const updateKickOffFlag = (KICKOFF && (USING_RULES.KICKOFF_RIGHT || !SHOTS)) ? addFlag : removeFlag;
 
   updatePlayerFlags('cGroup', player, (cGroup) => {
     cGroup = removeFlag(cGroup, room.CollisionFlags.c1); // Remove c1 cGroup (other player)
@@ -337,7 +446,7 @@ function updatePlayerCollisions(player) {
 }
 
 function updateOutOfTurnCollisions(player = undefined) {
-  if (RULES_ENABLED) {
+  if (USING_RULES.ONE_SHOT_EACH_PLAYER) {
     if (player) {
       updateOutOfTurnCollisionsPlayerFlags(player);
     } else {
@@ -366,7 +475,7 @@ function kickOff(enable = true) {
   if (KICKOFF) {
     moveBall(WHITE_BALL, WHITE_BALL_SPAWN);
 
-    if (isPractice()) {
+    if (playersInGameLength() === 1 && (CURRENT_MAP === 'PRACTICE' || !ballInPlayingArea(BLACK_BALL))) {
       moveBall(BLACK_BALL, BLACK_BALL_SPAWN);
     }
 
@@ -394,7 +503,7 @@ const WAITING_AREA = [ // positions where the players will wait for its turn
 ];
 
 function movePlayerToWaitingArea(player) {
-  if (RULES_ENABLED && player) {
+  if (USING_RULES.ONE_SHOT_EACH_PLAYER && player) {
     if (playerInPlayingArea(player)) {
       let i = TEAMS[player.team].findIndex(p => p.id === player.id) % 2;
     
@@ -414,7 +523,7 @@ function movePlayerToWaitingArea(player) {
 }
 
 function movePlayersOutOfTurn() {
-  if (RULES_ENABLED) {
+  if (USING_RULES.ONE_SHOT_EACH_PLAYER) {
     playersOutOfTurn().forEach(movePlayerToWaitingArea);
   }
 }
@@ -428,7 +537,7 @@ const PLAYER_SPAWN_POSITIONS = [ // positions where the player can spawn for its
 ];
 
 function moveCurrentPlayer(always = true) {
-  if (RULES_ENABLED && CURRENT_PLAYER) {
+  if (USING_RULES.ONE_SHOT_EACH_PLAYER && CURRENT_PLAYER) {
     const whiteBallPosition = room.getBallPosition();
 
     const isSpawn = WHITE_BALL_SPAWN.equals(whiteBallPosition);
@@ -485,7 +594,7 @@ function gameStatistics() {
   }
 }
 
-function onGameStart() {
+function onGameStart(byPlayer) {
   LOG.info('onGameStart');
 
   PLAYING = true;
@@ -506,12 +615,11 @@ function onGameStart() {
 
   LOG.debug('onGameStart CURRENT_TEAM', CURRENT_TEAM);
 
-  updateCurrentPlayer();
+  if (!byPlayer || playersInGameLength() || isHostPlayer(byPlayer)) {
+    updateCurrentPlayer();
+  }
 
   kickOff();
-
-  resetMapVoting();
-  resetRulesVoting();
 }
 
 function onGameStop(byPlayer) {
@@ -532,7 +640,11 @@ function onGameStop(byPlayer) {
   }
 }
 
-// TODO: kick strength control (check if isBallMoving(WHITE_BALL), otherwise modify WHITE_BALL xspeed / yspeed based on distance between player and ball)
+// TODO: kick strength control
+// Things to try:
+// - kick cGroup aimDisc, player kickStrength 0, onPlayerBallKick modify WHITE_BALL damping, invMass and xspeed / yspeed based on distance between player and ball
+// - same as above but with player kickStrength normal and no kick cGroup aimDisc, instead use !! to shoot away from the ball
+// - !1 ... !10 to select shot strength, onPlayerBallKick modify WHITE_BALL damping, invMass and xspeed / yspeed by strength multiplier (speed = speed / 5 * strength, so !5 is default), reset each turn
 function onPlayerBallKick(player) {
   LOG.debug('onPlayerBallKick', player.name);
 
@@ -551,21 +663,20 @@ function onPlayerBallKick(player) {
     EXTRA_SHOTS--;
   }
 
-  if (RULES_ENABLED) {
+  if (USING_RULES.ONE_SHOT_EACH_PLAYER) {
     if (player.id === CURRENT_PLAYER.id) {
-      if (USE_EXTENDED_RULES && BALLS_MOVING) {
-        foul("〰️❕ Balls were still moving");
+      checkBallsMoving();
+
+      if (USING_RULES.FOUL_BALLS_MOVING && BALLS_MOVING) {
+        foul(`${RULES.FOUL_BALLS_MOVING.icon} Balls were still moving`);
       } else {
-        checkBallsMoving();
-  
         if (!EXTRA_SHOTS && playersInGameLength() > 1) {
           movePlayerToWaitingArea(CURRENT_PLAYER);
         }
-  
         updateCurrentPlayer({ delayMove: true });
       }
     } else {
-      foul("𓀙 Wrong player turn!", false);
+      foul(`${RULES.ONE_SHOT_EACH_PLAYER.icon} Wrong player turn!`, false);
     }
   } else {
     CURRENT_PLAYER = player;
@@ -734,7 +845,7 @@ function incrementAFK(player) {
 }
 
 function incrementTurnTime() {
-  if (RULES_ENABLED && PLAYING && !GAME_OVER && playersInGameLength() > 1) {
+  if (PLAYING && !GAME_OVER && USING_RULES.ONE_SHOT_EACH_PLAYER && playersInGameLength() > 1) {
     if (++TURN_TIME === TURN_MAX_SECONDS - TURN_SECONDS_WARNING) {
       warn(`${CURRENT_PLAYER.name}, if you don't shoot in the next ${TURN_SECONDS_WARNING} seconds, you will lose your turn.`, CURRENT_PLAYER);
     } else if (TURN_TIME >= TURN_MAX_SECONDS) {
@@ -771,6 +882,9 @@ function onPlayerLeave(player) {
 
   CHANGING_TEAMS.delete(player.id);
 
+  removeMapVotes(player);
+  removeRulesVotes(player);
+
   if (!chooseMap()) {
     updateOnTeamMove(player);
   }
@@ -780,9 +894,6 @@ function onPlayerLeave(player) {
   } else if (!playersInGameLength()) {
     stopGame();
   }
-
-  removeMapVotes(player);
-  removeRulesVotes(player);
 
   clearAFK(player);
 
@@ -795,6 +906,9 @@ function onPlayerActivity(player) {
 
 function onPlayerTeamChange(player) {
   LOG.debug('onPlayerTeamChange', player.name, player.team);
+
+  updateRulesVotes();
+  updateMapVotes();
 
   if (CHANGING_TEAMS.delete(player.id) && !CHANGING_TEAMS.size) {
     CHANGING_TEAMS_CALLBACK.consume();
@@ -838,7 +952,7 @@ function checkPlayersRemainingTeam(team) {
     return false;
   }
 
-  let teamRemainingPlayers = teamPlayers.length;
+  const teamRemainingPlayers = teamPlayers.length;
 
   if (!teamRemainingPlayers) {
     const oppositeTeam = getOppositeTeam(team);
@@ -847,12 +961,12 @@ function checkPlayersRemainingTeam(team) {
       CURRENT_TEAM = oppositeTeam;
     }
 
-    teamRemainingPlayers = TEAMS[oppositeTeam].length;
+    const oppositeTeamRemainingPlayers = TEAMS[oppositeTeam].length;
 
-    if (!teamRemainingPlayers) {
+    if (!oppositeTeamRemainingPlayers) {
       stopGame();
       return false;
-    } else if (!isPractice()) {
+    } else if ((NEXT_MAP && CURRENT_MAP !== NEXT_MAP) || (!NEXT_MAP && CURRENT_MAP !== 'PRACTICE') || activePlayers().length > oppositeTeamRemainingPlayers) {
       if (!GAME_OVER) {
         info(`${getTeamName(team)} team has no active players remaining`, null, COLOR.INFO, 'bold');
 

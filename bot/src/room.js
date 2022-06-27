@@ -36,6 +36,9 @@ function init() {
     // room.setRequireRecaptcha(true);
   
     selectMap(DEFAULT_MAP);
+
+    resetMapVoting();
+    resetRulesVoting();
   
     updateIsPlaying();
     updatePlayersLength();

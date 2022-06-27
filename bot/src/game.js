@@ -35,14 +35,12 @@ function foul(message, nextTurn = true, delay = false) {
 
   warn(`❌  FOUL  |  ${message}`);
 
-  if (RULES_ENABLED && !GAME_OVER) {
+  if (!GAME_OVER) {
     EXTRA_SHOTS = REMAINING_RED_BALLS.length && REMAINING_BLUE_BALLS.length ? 2 : 1;
 
-    if (nextTurn) {
+    if (nextTurn && USING_RULES.ONE_SHOT_EACH_PLAYER) {
       if (LAST_PLAYER.id === CURRENT_PLAYER.id) {
         updateCurrentPlayer({ delayMove: delay, foul: true });
-      } else {
-        extraShotsInfo();
       }
     }
   }
@@ -51,7 +49,7 @@ function foul(message, nextTurn = true, delay = false) {
     FOUL = false;
   };
 
-  if (delay || !isPractice()) {
+  if (delay || playersInGameLength() > 1) {
     onBallsStatic('clearFoul', clearFoul);
   } else {
     clearFoul();
@@ -97,7 +95,7 @@ function checkWhiteBall() {
   if (!GAME_OVER && !SCORED_BALLS_TURN.has(WHITE_BALL) && !ballInPlayingArea(WHITE_BALL)) {
     SCORED_BALLS_TURN.add(WHITE_BALL);
 
-    if (USE_EXTENDED_RULES && isBallMoving(BLACK_BALL)) {
+    if (USING_RULES.BLACK_AFTER_WHITE_LOSE && isBallMoving(BLACK_BALL)) {
       onBallsStatic('checkWhiteBall', () => {
         if (!GAME_OVER) {
           scoredWhite();
@@ -110,9 +108,15 @@ function checkWhiteBall() {
 }
 
 function scoredWhite() {
-  const delay = isBallMoving(BLACK_BALL);
+  const delay = playersInGameLength() > 1 && isBallMoving(BLACK_BALL);
 
-  foul("Scored white ⚪️", true, delay);
+  const msg = "Scored white  ⚪️";
+
+  if (USING_RULES.WHITE_FOUL) {
+    foul(msg, true, delay);
+  } else {
+    info(msg);
+  }
 
   if (delay) {
     onBallsStatic('scoredWhiteKickOff', kickOff);
@@ -126,13 +130,16 @@ function checkBlackBall() {
     SCORED_BALLS_TURN.add(BLACK_BALL);
     BLACK_SCORED_TEAM = CURRENT_TEAM;
 
-    if (!isPractice()) {
+    const practice = playersInGameLength() === 1;
+
+    if (USING_RULES.BLACK_LAST && !practice) {
       if (getRemainingBalls(CURRENT_TEAM).length === 0) {
-        if (USE_EXTENDED_RULES && SCORED_BALLS_TURN.has(WHITE_BALL)) { // TODO: refactor USE_EXTENDED_RULES to USE_RULES.FOUL_WHITE_BLACK
-          foul("Scored white along with black ⚪️⚫️❗️", false);
+        if (USING_RULES.BLACK_AFTER_WHITE_LOSE && SCORED_BALLS_TURN.has(WHITE_BALL)) {
+          foul(`Scored white along with black  ${RULES.BLACK_AFTER_WHITE_LOSE.icon}`, false);
           gameOver(false);
         } else {
-          info("Scored black 🎱", null, getTeamColor(CURRENT_TEAM), 'bold');
+          info("Scored black  🎱", null, getTeamColor(CURRENT_TEAM), 'bold');
+          stackColorBall(CURRENT_TEAM, BLACK_BALL);
           gameOver(true);
         }
       } else {
@@ -140,8 +147,22 @@ function checkBlackBall() {
         gameOver(false);
       }
     } else {
-      info("Scored black 🎱", null, COLOR.SUCCESS);
-      kickOff();
+      let color;
+
+      if (practice) {
+        color = CURRENT_MAP === 'PRACTICE' || !USING_RULES.BLACK_LAST || getRemainingBalls(CURRENT_TEAM).length === 0 ? COLOR.SUCCESS : COLOR.YELLOW;
+      } else {
+        color = getTeamColor(CURRENT_TEAM);
+      }
+
+      info("Scored black  🎱", null, color);
+
+      if (practice && activePlayers().length === 1) {
+        kickOff();
+      } else {
+        stackColorBall(CURRENT_TEAM, BLACK_BALL);
+        gameOver(true);
+      }
     }
   }
 }
@@ -168,6 +189,10 @@ function checkColorBallsTeam(team, remainingBalls) {
     }
   }
 
+  if (newRemainingBalls) {
+    LOG.debug('newRemainingBalls', newRemainingBalls);
+  }
+
   return newRemainingBalls ? newRemainingBalls : remainingBalls;
 }
 
@@ -177,15 +202,18 @@ function checkColorBall(team, ballIndex) {
 
     info(`${getTeamIcon(team)} ${getTeamName(team)} scored`, null, getTeamColor(team));
 
-    if (CURRENT_TEAM === team && !FOUL && EXTRA_SHOTS !== 1) {
+    if (!FOUL && USING_RULES.EXTRA_SHOT_IF_SCORED && EXTRA_SHOTS !== 1
+      && (!USING_RULES.SCORE_PLAYER_COLOR || CURRENT_TEAM === team)) {
       EXTRA_SHOTS = 1;
 
-      if (RULES_ENABLED) {
+      if (USING_RULES.ONE_SHOT_EACH_PLAYER) {
         onBallsStatic('scoredColorBall', scoredColorBall);
       } else {
         scoredColorBall();
       }
     }
+
+    stackColorBall(team, ballIndex);
 
     return true;
   }
@@ -193,16 +221,42 @@ function checkColorBall(team, ballIndex) {
 }
 
 function scoredColorBall() {
-  if (RULES_ENABLED && !FOUL) {
-    info(`${getTeamIcon(CURRENT_TEAM)} ${CURRENT_PLAYER.name} have another shot 🏵`);
+  if (!FOUL && EXTRA_SHOTS === 1 && USING_RULES.EXTRA_SHOT_IF_SCORED && CURRENT_PLAYER) {
+    info(`${getTeamIcon(CURRENT_TEAM)} ${CURRENT_PLAYER.name} has another shot  🏵`);
   }
   updateCurrentPlayer({ changeTeam: FOUL, foul: FOUL });
+}
+
+function stackColorBall(team, ballIndex) {
+  const STACK_COLOR_SIDE = team === TEAM.RED ? STACK_COLOR_SIDE_RED : STACK_COLOR_SIDE_BLUE;
+
+  // Move to the stack with some gravity
+  room.setDiscProperties(ballIndex, {
+    invMass: 0.01,
+    ygravity: 0.05, // down
+    xgravity: 0.01 * (STACK_COLOR_SIDE.x < 0 ? -1 : 1), // left or right (push to the balls boundary)
+    bCoeff: 0, // sticky balls
+    ...STACK_COLOR_SIDE
+  });
+
+  setTimeout(() => {
+    if (!ballInPlayingArea(ballIndex)) { // avoid changing properties if next game was started
+      // Fix the ball in the stack to avoid movement from other balls
+      room.setDiscProperties(ballIndex, {
+        invMass: 0.001,
+        xspeed: 0,
+        yspeed: 0,
+        ygravity: 0
+      });
+    }
+  }, 5 * 1000); // 5s
 }
 
 function checkBallsMoving(checkStatic = false, beforeStaticCallback = null) {
   const wereMoving = BALLS_MOVING;
 
-  BALLS_MOVING = RULES_ENABLED && (isBallMoving(WHITE_BALL) || isBallMoving(BLACK_BALL) || REMAINING_RED_BALLS.some(isBallMoving) || REMAINING_BLUE_BALLS.some(isBallMoving));
+  BALLS_MOVING = (USING_RULES.ONE_SHOT_EACH_PLAYER || USING_RULES.FOUL_BALLS_MOVING)
+    && (isBallMoving(WHITE_BALL) || isBallMoving(BLACK_BALL) || REMAINING_RED_BALLS.some(isBallMoving) || REMAINING_BLUE_BALLS.some(isBallMoving));
 
   if (typeof beforeStaticCallback === 'function') {
     beforeStaticCallback();

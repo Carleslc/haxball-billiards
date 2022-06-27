@@ -13,15 +13,17 @@ function isForce(args, argIndex = 1) {
 
 function adminOnly(callback) {
   return function(player, args) {
-    adminOnlyCallback(player, () => callback(player, args));
+    adminOnlyCallback(player, args, () => callback(player, args));
   };
 }
 
-function adminOnlyCallback(player, callback) {
+function adminOnlyCallback(player, args, callback) {
   if (player.admin) {
     callback();
+  } else if (callback.name === 'map') {
+    vote(player, args);
   } else {
-    warn("Sorry, you do not have permissions to execute this command.", player);
+    warn("🚫 Sorry, you do not have permissions to execute this command.", player);
   }
 }
 
@@ -30,22 +32,83 @@ function adminOnlyCallback(player, callback) {
 /* rules */
 
 HELP.push(...[
-  "📋 !rules ▶️ show the billiards rules",
+  "📋 !rules ▶️ show the billiards rules of this room",
   "📖 !rules full ▶️ show the extended billiards rules"
 ]);
 
+function rulesHelp(ruleset, title = true) {
+  let help = '';
+
+  if (title) {
+    const rulesetTitle = ruleset === DEFAULT_RULESET ? '' : ruleset + ' ';
+    help = `📜 ${rulesetTitle}RULES 📜\n\n`;
+  }
+
+  help += RULESETS[ruleset].map(rule => rule.toString()).join('\n');
+
+  return help;
+}
+
+const RULES_HELP = {};
+
+Object.keys(RULESETS).forEach(ruleset => {
+  RULES_HELP[ruleset] = rulesHelp(ruleset);
+});
+
+const NOT_IMPLEMENTED_RULES = {};
+
+Object.keys(RULESETS).forEach(ruleset => {
+  NOT_IMPLEMENTED_RULES[ruleset] = notImplementedRules(ruleset).join('\n');
+});
+
 function rules(player, args) {
-  let arg = args.length > 0 && args[0].toLowerCase();
-  let extended = arg === 'full' || arg === 'extended';
+  const argRuleset = getRuleset(args.length > 0 && args[0]);
+
+  if (!args.length || argRuleset) {
+    const ruleset = argRuleset || USING_RULESET;
   
-  info(extended ? EXTENDED_RULES : RULES, player, COLOR.YELLOW);
+    let helpRules = RULES_HELP[ruleset];
+  
+    if (ruleset !== 'DISABLE') {
+      helpRules += "\n\n❌🟰2️⃣ Fouls are 2 turns for the opponent's team";
+      helpRules += "\n❕ Only if both teams have color balls remaining and if they do not commit another foul";
+    } else {
+      helpRules += "⭕️ Common rules are disabled.\n🎱 Game will end when the black ball is scored.";
+    }
+
+    if (!args.length && ruleset === 'NORMAL') {
+      helpRules += '\n\n🔰 If you want to know the optional extended rules, use !rules full'
+    }
+
+    if (USING_RULESET !== ruleset) {
+      helpRules += `\n\nCurrently playing with !rules ${USING_RULESET.toLowerCase()}`;
+    }
+
+    const notImplementedRules = NOT_IMPLEMENTED_RULES[ruleset];
+
+    if (notImplementedRules) {
+      helpRules += '\n';
+    }
+    
+    info(helpRules, player, COLOR.YELLOW);
+  
+    if (notImplementedRules) {
+      let notImplementedHelp = `\nAutomatic turns are disabled with this ruleset because some rules are not yet enforced by the bot:\n`;
+      notImplementedHelp += NOT_IMPLEMENTED_RULES[ruleset];
+      notImplementedHelp += `\n\nMake sure you follow these rules during the game.`;
+
+      info(notImplementedHelp, player, COLOR.YELLOW);
+    }
+  } else {
+    warn(`Invalid rules. Available rulesets: ${AVAILABLE_RULESETS}`);
+  }
 }
 
 /* drinks */
 
 HELP.push(`🤵🏽‍♂️ ${DRINK_MENU} ▶️ order a drink to the bartender`);
 
-let DRINKING = {}; // Players who have ordered a drink recently: auth to { icon, endTime }
+const DRINKING = {}; // Players who have ordered a drink recently: auth to { icon, endTime }
 
 function isDrinking(player) {
   return getAuth(player) in DRINKING;
@@ -153,18 +216,20 @@ function vote(player, args) {
 function voteMap(player, map) {
   map = map.toUpperCase();
 
-  const mapVotes = VOTES[map];
+  const mapVotes = MAP_VOTES[map];
 
   if (mapVotes) {
-    if (!mapVotes.has(player.id)) {
+    if (CURRENT_MAP === map) {
+      info(`Already playing in map ${map.toLowerCase()}.`, player);
+    } else if (!mapVotes.has(player.id)) {
       mapVotes.add(player.id);
-      
-      info(`${player.name} has voted for ${map.toLowerCase()} map (${mapVotes.size} ${mapVotes.size !== 1 ? 'votes' : 'vote'})`, null, COLOR.SUCCESS);
-    
-      const majority = mapVotes.size > Math.floor(activePlayers().length / 2);
 
-      if (majority) {
-        startNextMap(map, 'majority vote');
+      const activeVotes = filter(mapVotes, p => !isAFK(p)).length;
+      
+      info(`${player.name} has voted for ${map.toLowerCase()} map (${activeVotes} ${activeVotes !== 1 ? 'votes' : 'vote'})`, null, COLOR.SUCCESS);
+
+      if (isMajorityVoting(activeVotes, activePlayers().length)) {
+        selectNextMap(map, 'majority vote');
       } else {
         info(`!vote [${AVAILABLE_MAPS}]`);
       }
@@ -176,20 +241,51 @@ function voteMap(player, map) {
   }
 }
 
+function isMajorityVoting(votes, players) {
+  return votes > Math.floor(players / 2);
+}
+
+function updateMapVotes() {
+  let totalVotes = 0;
+  let newMajorityMap;
+
+  const players = activePlayers().length;
+
+  Object.keys(MAPS).forEach(map => {
+    const mapVotes = MAP_VOTES[map];
+
+    const activeVotes = filter(mapVotes, player => !isAFK(player)).length;
+
+    totalVotes += activeVotes;
+
+    if (!newMajorityMap && isMajorityVoting(activeVotes, players)) {
+      newMajorityMap = map;
+    }
+  });
+
+  if (newMajorityMap) {
+    selectNextMap(newMajorityMap, 'majority vote', false);
+  } else if (totalVotes === 0) {
+    resetNextMap();
+  }
+}
+
 function removeMapVotes(player) {
   Object.keys(MAPS).forEach(map => {
-    VOTES[map].delete(player);
+    MAP_VOTES[map].delete(player.id);
   });
+  updateMapVotes();
 }
 
 function resetMapVoting() {
   Object.keys(MAPS).forEach(map => {
-    if (map in VOTES) {
-      VOTES[map].clear();
+    if (map in MAP_VOTES) {
+      MAP_VOTES[map].clear();
     } else {
-      VOTES[map] = new Set();
+      MAP_VOTES[map] = new Set();
     }
   });
+  resetNextMap();
 }
 
 /* map */
@@ -199,7 +295,7 @@ ADMIN_HELP.push(`⚙️ !map [${AVAILABLE_MAPS}] [f, force]? ▶️ change the c
 function map(player, args) {
   if (args.length > 0) {
     if (!PLAYING || isForce(args)) {
-      startNextMap(args[0], player.name);
+      selectNextMap(args[0], player.name);
     } else {
       warn("There is currently a game being played, please stop it first or run this command again with force.", player);
     }
@@ -210,93 +306,128 @@ function map(player, args) {
 
 /* setrules */
 
-HELP.push(`🤖 !setrules [${AVAILABLE_RULES}] ▶️ set the rules to apply`);
+HELP.push(`🤖 !setrules [${AVAILABLE_RULESETS}] ▶️ set the rules to apply`);
 
 function setVoteRules(player, args) {
   if (args.length > 0) {
-    const rules = args[0];
+    const ruleset = args[0];
 
     if (player.admin && isForce(args)) {
-      const set = setRules(rules, player.name);
+      const set = setRuleset(ruleset, player.name);
 
       if (!set) {
-        warn(`Invalid rules. Available rulesets: ${AVAILABLE_RULES}`);
+        warn(`Invalid rules. Available rulesets: ${AVAILABLE_RULESETS}`);
       }
     } else {
-      voteRules(player, rules);
+      voteRules(player, ruleset);
     }
   } else {
-    const help = `!setrules [${AVAILABLE_RULES}]` + (player.admin ? ' [f, force]?' : '');
+    const help = `!setrules [${AVAILABLE_RULESETS}]` + (player.admin ? ' [f, force]?' : '');
     info(help, player, COLOR.DEFAULT);
   }
 }
 
-function voteRules(player, rules) {
-  rules = rules.toUpperCase();
+function voteRules(player, ruleset) {
+  ruleset = getRuleset(ruleset);
 
-  if (rules === 'FULL') {
-    rules = 'EXTENDED';
-  } else if (rules === 'AUTO') {
-    rules = 'NORMAL';
-  }
+  if (ruleset) {
+    const rulesVotes = RULESET_VOTES[ruleset];
 
-  const rulesVotes = SET_RULES[rules];
-
-  if (rulesVotes) {
-    if (!rulesVotes.has(player.id)) {
+    if (USING_RULESET === ruleset) {
+      info(`Already playing with ${ruleset.toLowerCase()} rules.`, player);
+    } else if (!rulesVotes.has(player.id)) {
       rulesVotes.add(player.id);
 
-      info(`${player.name} has voted to use ${rules.toLowerCase()} rules (${rulesVotes.size} ${rulesVotes.size !== 1 ? 'votes' : 'vote'})`, null, COLOR.SUCCESS);
-    
-      const majority = rulesVotes.size > Math.floor(playingOrActivePlayers().length / 2);
+      const activeVotes = filter(rulesVotes, p => !isAFK(p)).length;
 
-      if (majority) {
-        setRules(rules, 'majority vote');
+      info(`${player.name} has voted to use ${ruleset.toLowerCase()} rules (${activeVotes} ${activeVotes !== 1 ? 'votes' : 'vote'})`, null, COLOR.SUCCESS);
+
+      if (isMajorityVoting(activeVotes, playingOrActivePlayers().length)) {
+        setRuleset(ruleset, 'majority vote');
       } else {
-        info(`!setrules [${AVAILABLE_RULES}]`);
+        info(`!setrules [${AVAILABLE_RULESETS}]`);
       }
     } else {
-      warn(`You've already voted to use ${rules.toLowerCase()} rules.`, player);
+      warn(`You've already voted to use ${ruleset.toLowerCase()} rules.`, player);
     }
   } else {
-    warn(`Invalid rules. Available rulesets: ${AVAILABLE_RULES}`);
+    warn(`Invalid rules. Available rulesets: ${AVAILABLE_RULESETS}`);
   }
 }
 
-function setRules(rules, by) {
-  rules = rules.toUpperCase();
+function setRuleset(ruleset, by) {
+  ruleset = getRuleset(ruleset);
 
-  if (rules in SET_RULES) {
-    LOG.info('setRules', rules, by);
-
-    RULES_ENABLED = rules !== 'DISABLE';
-    USE_EXTENDED_RULES = rules === 'EXTENDED';
-
-    if (RULES_ENABLED) {
-      updateCurrentPlayer();
-    } else {
-      resetCollisions();
+  if (ruleset) {
+    if (USING_RULESET !== ruleset) {
+      LOG.info('setRules', ruleset, by);
+      
+      USING_RULESET = ruleset;
+      USING_RULES = rulesMapping(RULESETS[USING_RULESET]);
+  
+      const missingRules = notImplementedRules(USING_RULESET);
+  
+      if (missingRules.length > 0) {
+        // Cannot determine if some rules are satisfied
+        delete USING_RULES.ONE_SHOT_EACH_PLAYER; // may not give the 2 turns of a foul
+        delete USING_RULES.EXTRA_SHOT_IF_SCORED; // may keep turn when is a foul
+      }
+  
+      if (USING_RULES.ONE_SHOT_EACH_PLAYER) {
+        updateCurrentPlayer();
+      } else {
+        resetCollisions();
+      }
+  
+      if (N_PLAYERS) {
+        let msg = `Now using !rules ${ruleset.toLowerCase()}`;
+        info(by ? `${msg}, set by ${by}.` : `${msg}.`, null, COLOR.NOTIFY, 'bold');
+      }
     }
-
-    info(`Now using ${rules.toLowerCase()} rules, set by ${by}.`, null, COLOR.NOTIFY, 'bold');
-
-    SET_RULES[rules].clear();
-
     return true;
   }
   return false;
 }
 
-function removeRulesVotes(player) {
-  Object.values(SET_RULES).forEach(rules => {
-    rules.delete(player);
+function updateRulesVotes() {
+  let totalVotes = 0;
+  let newMajorityRules;
+
+  const players = playingOrActivePlayers().length;
+
+  Object.entries(RULESET_VOTES).forEach(([ruleset, votes]) => {
+    const activeVotes = filter(votes, player => !isAFK(player)).length;
+
+    totalVotes += activeVotes;
+
+    if (!newMajorityRules && isMajorityVoting(activeVotes, players)) {
+      newMajorityRules = ruleset;
+    }
   });
+
+  if (newMajorityRules) {
+    setRuleset(newMajorityRules, 'majority vote');
+  } else if (totalVotes === 0) {
+    resetRules();
+  }
+}
+
+function removeRulesVotes(player) {
+  Object.values(RULESET_VOTES).forEach((votes) => {
+    votes.delete(player.id);
+  });
+  updateRulesVotes();
 }
 
 function resetRulesVoting() {
-  Object.values(SET_RULES).forEach(rules => {
+  Object.values(RULESET_VOTES).forEach(rules => {
     rules.clear();
   });
+  resetRules();
+}
+
+function resetRules() {
+  setRuleset(DEFAULT_RULESET, '');
 }
 
 /* afk */

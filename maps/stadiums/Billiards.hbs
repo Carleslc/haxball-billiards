@@ -177,12 +177,6 @@
       "bCoef": 0,
       "cMask": ["ball"]
     },
-    "railSide": {
-      "vis": false,
-      "bCoef": 10,
-      "bias": -5,
-      "cMask": ["ball"]
-    },
     "railStopRight": {
       "vis": false,
       "bCoef": 0,
@@ -216,8 +210,8 @@
 
     { "normal": [0, -1], "dist": -275, "trait": "ballBoundary" },
     { "normal": [0, 1], "dist": -275, "trait": "ballBoundary" },
-    { "normal": [1, 0], "dist": -475, "trait": "ballBoundary" },
-    { "normal": [-1, 0], "dist": -475, "trait": "ballBoundary" }
+    { "normal": [1, 0], "dist": -440, "trait": "ballBoundary" },
+    { "normal": [-1, 0], "dist": -440, "trait": "ballBoundary" }
   ],
 
   "discs": [
@@ -547,11 +541,11 @@
     /* 249 */ { "x": -387, "y": 84, "trait": "bgIndicator" },
 
     // Ball rails: Stop
-    /* 250 */ { "x": 475, "y": 88, "trait": "railStopRight" },
-    /* 251 */ { "x": -475, "y": 88, "trait": "railStopLeft" },
+    /* 250 */ { "x": 475, "y": 99, "trait": "railStopRight" },
+    /* 251 */ { "x": 387, "y": 99, "trait": "railStopRight" },
 
-    /* 252 */ { "x": -20, "y": -229, "trait": "railSide" },
-    /* 253 */ { "x": 5, "y": -275, "trait": "railSide" }
+    /* 252 */ { "x": -475, "y": 99, "trait": "railStopLeft" },
+    /* 253 */ { "x": -387, "y": 99, "trait": "railStopLeft" },
   ],
 
   // Lines
@@ -790,11 +784,8 @@
     { "v0": 249, "v1": 246, "trait": "bgIndicator" },
 
     // Ball rails: Stop
-    { "v0": 211, "v1": 250, "trait": "railStopRight" },
-    { "v0": 247, "v1": 251, "trait": "railStopLeft" },
-    
-    // Ball rails: Launcher
-    { "v0": 252, "v1": 253, "trait": "railSide" }
+    { "v0": 250, "v1": 251, "trait": "railStopRight" },
+    { "v0": 252, "v1": 253, "trait": "railStopLeft" },
   ],
 
   // Goals

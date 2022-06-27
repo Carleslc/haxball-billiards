@@ -16,6 +16,18 @@ function findAllIndexes(array, condition) {
   return indexes;
 }
 
+function filter(set, condition) {
+  const items = [];
+  
+  set.forEach((e) => {
+    if (condition(e)) {
+      items.push(e);
+    }
+  });
+
+  return items;
+}
+
 function distance(a, b) {
   return Math.sqrt((b.x - a.x)**2 + (b.y - a.y)**2);
 }
