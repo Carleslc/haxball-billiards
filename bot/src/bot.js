@@ -616,7 +616,7 @@ function onGameStart(byPlayer) {
   LOG.debug('onGameStart CURRENT_TEAM', CURRENT_TEAM);
 
   if (!byPlayer || playersInGameLength() || isHostPlayer(byPlayer)) {
-    updateCurrentPlayer();
+    updateCurrentPlayer({ changeTeam: !CURRENT_TEAM });
   }
 
   kickOff();
