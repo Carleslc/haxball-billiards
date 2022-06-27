@@ -39,6 +39,14 @@ module.exports = function(grunt) {
         dest: minified
       }
     },
+    shell: {
+      maps: {
+        options: {
+          stdout: true
+        },
+        command: commands(['cd ../maps/', 'python build-stadiums.py billiards.yml', 'python build-stadiums.py billiards.yml --raw']),
+      }
+    },
     clean: {
       prod: [concatProd],
       all: ['output/']
@@ -53,16 +61,23 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-contrib-concat'); // https://github.com/gruntjs/grunt-contrib-concat
   grunt.loadNpmTasks('grunt-contrib-uglify-es'); // https://github.com/gruntjs/grunt-contrib-uglify/tree/harmony
   grunt.loadNpmTasks('grunt-contrib-clean'); // https://github.com/gruntjs/grunt-contrib-clean
+  grunt.loadNpmTasks('grunt-shell'); // https://github.com/sindresorhus/grunt-shell
 
   grunt.registerMultiTask('log', 'Log output information', function logTask() {
     log(this.data);
   });
 
-  // Default tasks
-  grunt.registerTask('default', ['concat:prod', 'uglify', 'clean:prod', 'log:prod']);
+  // Map task
+  grunt.registerTask('maps', ['shell:maps']);
+
+  // Prod tasks
+  grunt.registerTask('prod', ['concat:prod', 'uglify', 'clean:prod', 'log:prod']);
+  grunt.registerTask('prod-maps', ['maps', 'prod']);
+  grunt.registerTask('default', ['prod']);
 
   // Dev tasks
   grunt.registerTask('dev', ['concat:dev', 'log:dev']);
+  grunt.registerTask('dev-maps', ['maps', 'dev']);
   grunt.registerTask('clear', ['clean:all']);
 
   function log(text) {
@@ -83,4 +98,21 @@ function sources(files, dir='src') {
   files.forEach(file => src.push(`${dir}/${file}.js`));
 
   return src;
+}
+
+function commands(exec, echo=true) {
+  const cmds = [];
+
+  if (exec instanceof Array) {
+    exec.forEach(command => {
+      if (typeof command === 'string') {
+        if (echo) {
+          cmds.push(`echo "${command}"`);
+        }
+        cmds.push(command);
+      }
+    });
+  }
+
+  return cmds.join(' && ');
 }

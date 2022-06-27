@@ -15,13 +15,27 @@ npm install
 
 ### Build
 
-`grunt`
+`grunt` or `grunt prod`
 
-**output/haxball-billiards.min.js** : src files concatenated and minified
+Build src files concatenated and minified:
+
+**output/haxball-billiards.min.js**
 
 `grunt dev`
 
-**output/haxball-billiards.dev.js** : src files concatenated, not minified only for debugging purposes
+Build src files concatenated but not minified for debugging purposes:
+
+**output/haxball-billiards.dev.js**
+
+`grunt dev-maps`
+
+Same as `grunt dev`, but first builds the maps.
+
+Use this if you have modified the stadiums with the `../maps/Billiards Template.hbst` file.
+
+`grunt prod-maps`
+
+Same as `grunt prod`, but first builds the maps.
 
 `grunt clear`
 
