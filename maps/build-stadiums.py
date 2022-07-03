@@ -102,8 +102,11 @@ def bot_maps(stadiums):
       raw_stadium = raw_stadium_file.read()
       mappings.append((name, raw_stadium))
 
+  map_names = '", "'.join(stadiums)
+  maps = f"const MAP_NAMES = [\"{map_names}\"];\n"
+
   maps_values = ',\n\n  '.join(map(lambda mapping: f'{mapping[0]}: `{mapping[1]}`', mappings))
-  maps = f'const MAPS = {{\n  {maps_values}\n}};\n'
+  maps += f'\nconst MAPS = {{\n  {maps_values}\n}};\n'
 
   banner = '// Source: haxball-billiards/maps\n// Generated with: python build-stadiums.py billiards.yml --raw';
 

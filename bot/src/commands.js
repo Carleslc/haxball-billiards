@@ -12,16 +12,12 @@ function isForce(args, argIndex = 1) {
 }
 
 function adminOnly(callback) {
-  return function(player, args) {
-    adminOnlyCallback(player, args, () => callback(player, args));
-  };
+  return (player, args) => adminOnlyCallback(player, args, callback);
 }
 
 function adminOnlyCallback(player, args, callback) {
   if (player.admin) {
-    callback();
-  } else if (callback.name === 'map') {
-    vote(player, args);
+    callback(player, args);
   } else {
     warn("🚫 Sorry, you do not have permissions to execute this command.", player);
   }
@@ -33,7 +29,7 @@ function adminOnlyCallback(player, args, callback) {
 
 HELP.push(...[
   "📋 !rules ▶️ show the billiards rules of this room",
-  "📖 !rules full ▶️ show the extended billiards rules"
+  "📖 !rules extended ▶️ show the extended billiards rules"
 ]);
 
 function rulesHelp(ruleset, title = true) {
@@ -73,11 +69,11 @@ function rules(player, args) {
       helpRules += "\n\n❌🟰2️⃣ Fouls are 2 turns for the opponent's team";
       helpRules += "\n❕ Only if both teams have color balls remaining and if they do not commit another foul";
     } else {
-      helpRules += "⭕️ Common rules are disabled.\n🎱 Game will end when the black ball is scored.";
+      helpRules += "⭕️  Rules and automatic turns are disabled.\n🎱  Game will end when the black ball is scored.";
     }
 
     if (!args.length && ruleset === 'NORMAL') {
-      helpRules += '\n\n🔰 If you want to know the optional extended rules, use !rules full'
+      helpRules += '\n\n🔰 If you want to know the optional extended rules, use !rules extended'
     }
 
     if (USING_RULESET !== ruleset) {
@@ -100,13 +96,13 @@ function rules(player, args) {
       info(notImplementedHelp, player, COLOR.YELLOW);
     }
   } else {
-    warn(`Invalid rules. Available rulesets: ${AVAILABLE_RULESETS}`);
+    warn(`Invalid rules. Available rulesets: ${AVAILABLE_RULESETS}`, player);
   }
 }
 
 /* drinks */
 
-HELP.push(`🤵🏽‍♂️ ${DRINK_MENU} ▶️ order a drink to the bartender`);
+HELP.push(`🤵🏽‍♂️ ${DRINK_MENU} ▶️ order a drink`);
 
 const DRINKING = {}; // Players who have ordered a drink recently: auth to { icon, endTime }
 
@@ -174,16 +170,18 @@ function orderDrink(player, drink) {
     const host = getHostPlayer();
     setHostAvatar(host, icon, DRINK_PREPARATION_SECONDS);
 
-    // Move host to the table if player is playing
-    if (host.team === TEAM.SPECTATOR && player.team !== TEAM.SPECTATOR) {
+    // Move host to the table
+    if (host.team === TEAM.SPECTATOR) {
       setTimeout(() => {
         setPlayerTeam(host, player.team);
       }, Math.floor(DRINK_PREPARATION_SECONDS / 2) * 1000);
+    } else {
+      moveHostPlayer(host);
     }
 
     // Set drink avatar
     setTimeout(() => {
-      message(drinkMessage, player);
+      message(`-> ${player.name} ${drinkMessage}`);
       room.setPlayerAvatar(player.id, icon);
     }, DRINK_PREPARATION_SECONDS * 1000);
 
@@ -199,6 +197,20 @@ function orderDrink(player, drink) {
   }
 }
 
+/* strength control */
+
+HELP.push(`✴️ ![1-10] ▶️ select your kick strength level, default is !${DEFAULT_STRENGTH}. Check your current strength level with !!`);
+
+function selectStrength(player, _, multiplier) {
+  STRENGTH_MULTIPLIER[player.id] = parseInt(multiplier);
+
+  info(`✴️ ${multiplier}`, player, COLOR.YELLOW);
+}
+
+function checkStrength(player) {
+  info(`✴️ ${getPlayerStrength(player)}`, player, COLOR.YELLOW);
+}
+
 /* vote */
 
 const AVAILABLE_MAPS = Object.keys(MAPS).map(m => m.toLowerCase()).join(', ');
@@ -210,6 +222,7 @@ function vote(player, args) {
     voteMap(player, args[0]);
   } else {
     info(`!vote [${AVAILABLE_MAPS}]`, player, COLOR.DEFAULT);
+    info(`Currently playing in map ${CURRENT_MAP.toLowerCase()}`, player, COLOR.INFO, 'italic');
   }
 }
 
@@ -218,17 +231,19 @@ function voteMap(player, map) {
 
   const mapVotes = MAP_VOTES[map];
 
+  const currentActivePlayers = activePlayers();
+
   if (mapVotes) {
     if (CURRENT_MAP === map) {
       info(`Already playing in map ${map.toLowerCase()}.`, player);
-    } else if (!mapVotes.has(player.id)) {
+    } else if (!mapVotes.has(player.id) || (currentActivePlayers.length === 1 && player.team != TEAM.SPECTATOR)) {
       mapVotes.add(player.id);
 
       const activeVotes = filter(mapVotes, p => !isAFK(p)).length;
       
       info(`${player.name} has voted for ${map.toLowerCase()} map (${activeVotes} ${activeVotes !== 1 ? 'votes' : 'vote'})`, null, COLOR.SUCCESS);
 
-      if (isMajorityVoting(activeVotes, activePlayers().length)) {
+      if (isMajorityVoting(activeVotes, currentActivePlayers.length)) {
         selectNextMap(map, 'majority vote');
       } else {
         info(`!vote [${AVAILABLE_MAPS}]`);
@@ -237,7 +252,7 @@ function voteMap(player, map) {
       warn(`You've already voted for the map ${map.toLowerCase()}.`, player);
     }
   } else {
-    warn(`Invalid map. Available maps: ${AVAILABLE_MAPS}`);
+    warn(`Invalid map. Available maps: ${AVAILABLE_MAPS}`, player);
   }
 }
 
@@ -293,20 +308,29 @@ function resetMapVoting() {
 ADMIN_HELP.push(`⚙️ !map [${AVAILABLE_MAPS}] [f, force]? ▶️ change the current map`);
 
 function map(player, args) {
-  if (args.length > 0) {
-    if (!PLAYING || isForce(args)) {
-      selectNextMap(args[0], player.name);
-    } else {
+  if (!player.admin) {
+    vote(player, args);
+  } else if (args.length > 0) {
+    const mapName = args[0].toUpperCase();
+    const players = playersInGameLength();
+
+    if (!PLAYING || !players || isForce(args) || (players === 1 && player.team !== TEAM.SPECTATOR)) {
+      selectNextMap(mapName, player.name);
+    } else if (CURRENT_MAP !== mapName) {
       warn("There is currently a game being played, please stop it first or run this command again with force.", player);
+    } else {
+      info(`Already playing in map ${mapName.toLowerCase()}.`, player);
     }
   } else {
-    warn(`!map [${AVAILABLE_MAPS}]`, player);
+    info(`!map [${AVAILABLE_MAPS}] [f, force]?`, player, COLOR.DEFAULT);
+    info(`Currently playing in map ${CURRENT_MAP.toLowerCase()}`, player, COLOR.INFO, 'italic');
   }
 }
 
 /* setrules */
 
-HELP.push(`🤖 !setrules [${AVAILABLE_RULESETS}] ▶️ set the rules to apply`);
+HELP.push(`🤖 !setrules [${AVAILABLE_RULESETS}] ▶️ vote the rules to apply`);
+ADMIN_HELP.push(`🤖 !setrules [${AVAILABLE_RULESETS}] [f, force]? ▶️ vote or set the rules to apply`);
 
 function setVoteRules(player, args) {
   if (args.length > 0) {
@@ -316,7 +340,7 @@ function setVoteRules(player, args) {
       const set = setRuleset(ruleset, player.name);
 
       if (!set) {
-        warn(`Invalid rules. Available rulesets: ${AVAILABLE_RULESETS}`);
+        warn(`Invalid rules. Available rulesets: ${AVAILABLE_RULESETS}`, player);
       }
     } else {
       voteRules(player, ruleset);
@@ -324,6 +348,7 @@ function setVoteRules(player, args) {
   } else {
     const help = `!setrules [${AVAILABLE_RULESETS}]` + (player.admin ? ' [f, force]?' : '');
     info(help, player, COLOR.DEFAULT);
+    info(`Currently playing with !rules ${USING_RULESET.toLowerCase()}`, player, COLOR.INFO, 'italic');
   }
 }
 
@@ -333,16 +358,18 @@ function voteRules(player, ruleset) {
   if (ruleset) {
     const rulesVotes = RULESET_VOTES[ruleset];
 
+    const currentActivePlayers = playingOrActivePlayers();
+
     if (USING_RULESET === ruleset) {
       info(`Already playing with ${ruleset.toLowerCase()} rules.`, player);
-    } else if (!rulesVotes.has(player.id)) {
+    } else if (!rulesVotes.has(player.id) || (currentActivePlayers.length === 1 && player.team != TEAM.SPECTATOR)) {
       rulesVotes.add(player.id);
 
       const activeVotes = filter(rulesVotes, p => !isAFK(p)).length;
 
       info(`${player.name} has voted to use ${ruleset.toLowerCase()} rules (${activeVotes} ${activeVotes !== 1 ? 'votes' : 'vote'})`, null, COLOR.SUCCESS);
 
-      if (isMajorityVoting(activeVotes, playingOrActivePlayers().length)) {
+      if (isMajorityVoting(activeVotes, currentActivePlayers.length)) {
         setRuleset(ruleset, 'majority vote');
       } else {
         info(`!setrules [${AVAILABLE_RULESETS}]`);
@@ -351,7 +378,7 @@ function voteRules(player, ruleset) {
       warn(`You've already voted to use ${ruleset.toLowerCase()} rules.`, player);
     }
   } else {
-    warn(`Invalid rules. Available rulesets: ${AVAILABLE_RULESETS}`);
+    warn(`Invalid rules. Available rulesets: ${AVAILABLE_RULESETS}`, player);
   }
 }
 
@@ -359,29 +386,33 @@ function setRuleset(ruleset, by) {
   ruleset = getRuleset(ruleset);
 
   if (ruleset) {
+    const key = 'setRules';
+
     if (USING_RULESET !== ruleset) {
-      LOG.info('setRules', ruleset, by);
+      onBallsStatic(key, () => {
+        LOG.info(key, ruleset, by);
+
+        USING_RULESET = ruleset;
+        USING_RULES = rulesMapping(RULESETS[USING_RULESET]);
+
+        if (USING_RULES.ONE_SHOT_EACH_PLAYER) {
+          updateCurrentPlayer();
+        } else {
+          resetCollisions();
+        }
+      }, true);
       
-      USING_RULESET = ruleset;
-      USING_RULES = rulesMapping(RULESETS[USING_RULESET]);
-  
-      const missingRules = notImplementedRules(USING_RULESET);
-  
+      const missingRules = notImplementedRules(ruleset);
+      
       if (missingRules.length > 0) {
         // Cannot determine if some rules are satisfied
         delete USING_RULES.ONE_SHOT_EACH_PLAYER; // may not give the 2 turns of a foul
         delete USING_RULES.EXTRA_SHOT_IF_SCORED; // may keep turn when is a foul
       }
-  
-      if (USING_RULES.ONE_SHOT_EACH_PLAYER) {
-        updateCurrentPlayer();
-      } else {
-        resetCollisions();
-      }
-  
+      
       if (N_PLAYERS) {
-        let msg = `Now using !rules ${ruleset.toLowerCase()}`;
-        info(by ? `${msg}, set by ${by}.` : `${msg}.`, null, COLOR.NOTIFY, 'bold');
+        const msg = `Now using !rules ${ruleset.toLowerCase()}`;
+        info(by ? `${msg}, set by ${by}.` : msg, null, COLOR.NOTIFY, 'bold');
       }
     }
     return true;
@@ -430,16 +461,61 @@ function resetRules() {
   setRuleset(DEFAULT_RULESET, '');
 }
 
+/* aim */
+
+HELP.push("🧭 !aim ▶️ toggle the aim disc");
+
+function aim(player) {
+  const aimEnabled = toggleAim(player);
+
+  if (CURRENT_PLAYER && player.id === CURRENT_PLAYER.id) {
+    setWhiteBall(CURRENT_PLAYER);
+  }
+
+  if (aimEnabled) {
+    if (WHITE_BALL_AIM === WHITE_BALL_NO_AIM && !AIM_OPTION) {
+      warn("🧭❌❗️ You can not enable aiming in this map.", player);
+    } else {
+      info("🧭✅ Aiming is now enabled.", player, COLOR.SUCCESS);
+    }
+  } else {
+    if (WHITE_BALL_AIM === WHITE_BALL_NO_AIM && AIM_OPTION) {
+      warn("🧭✅❗️ You can not disable aiming in this map.", player);
+    } else {
+      info("🧭❌ Aiming is now disabled.", player);
+    }
+  }
+}
+
+function toggleAim(player) {
+  return player ? enableAim(player, !isAim(player)) : null;
+}
+
+function enableAim(player, enable = true) {
+  if (player) {
+    if (enable) {
+      AIM_PLAYERS.add(player.id);
+    } else {
+      AIM_PLAYERS.delete(player.id);
+    }
+  }
+  return enable;
+}
+
+function isAim(player) {
+  return !player || AIM_PLAYERS.has(player.id);
+}
+
 /* afk */
 
 HELP.push("😴 !afk ▶️ switch between afk / online");
 
-function afk(player, _) {
+function afk(player) {
   if (isAFK(player)) {
-    resetAFK(player);
+    resetAFK(player, true, true);
   } else {
-    setAFK(player);
     info(`😴 ${player.name} is AFK`, null, COLOR.INFO, 'bold');
+    setAFK(player, true);
     infoInactive(player);
   }
 }
@@ -451,6 +527,24 @@ HELP.push("👤 !avatar {AVATAR} ▶️ override your avatar only for this sessi
 function avatar(player, args) {
   let selected = joinArgs(args);
   room.setPlayerAvatar(player.id, selected === '8' ? '🎱' : selected);
+}
+
+/* teams */
+
+ADMIN_HELP.push("👥 !teams [1-4]? ▶️ select how many players can be in each team at most");
+
+function teams(player, args) {
+  if (args.length > 0) {
+    const newTeamLimit = checkInt('Team limit', args[0], player, 1, 4);
+
+    if (typeof newTeamLimit === 'number') {
+      TEAM_LIMIT = newTeamLimit;
+      notify(`Team limit set to ${TEAM_LIMIT} vs ${TEAM_LIMIT} by ${player.name}`);
+      setTeams();
+    }
+  } else {
+    info(`Current team limit is ${TEAM_LIMIT} vs ${TEAM_LIMIT}`, player);
+  }
 }
 
 /* kick & ban */
@@ -500,20 +594,18 @@ function clearbans(player, _) {
 
 /* help */
 
-HELP.push("❔ !help ▶️ display this message");
-
-function help(player) {
-  let help = HELP;
-
-  if (player.admin) {
-    help += '\n\n⚜️ ADMIN ⚜️\n' + ADMIN_HELP;
-  }
-  
-  info(help, player, COLOR.DEFAULT);
-}
+// HELP.push("❔ !help ▶️ display this message");
 
 HELP = HELP.join('\n');
 ADMIN_HELP = ADMIN_HELP.join('\n');
+
+function help(player) {
+  info(HELP, player, COLOR.DEFAULT);
+
+  if (player.admin) {
+    info('⚜️ ADMIN ⚜️\n' + ADMIN_HELP, player, COLOR.DEFAULT);
+  }
+}
 
 /* Command Handlers */
 
@@ -524,7 +616,10 @@ const COMMAND_HANDLERS = {
   'vote': vote,
   'afk': afk,
   'avatar': avatar,
-  'map': adminOnly(map),
+  'aim': aim,
+  '!': checkStrength,
+  'map': map,
+  'teams': adminOnly(teams),
   'kick': adminOnly(kick),
   'ban': adminOnly(ban),
   'clearbans': adminOnly(clearbans),
@@ -534,19 +629,23 @@ Object.keys(DRINKS).forEach(drink => {
   COMMAND_HANDLERS[drink] = (player, _) => orderDrink(player, drink);
 });
 
+for (let i = 1; i <= 10; i++) {
+  COMMAND_HANDLERS[String(i)] = selectStrength;
+}
+
 function onPlayerChat(player, msg) {
   if (msg.startsWith('!')) {
     // Command
     msg = msg.slice(1); // trim !
-    let args = msg.split(/\s+/); // split spaces
+    let args = msg.split(/\s+/).filter(arg => arg.length > 0); // split spaces
 
     let command = args[0].toLowerCase();
     args.splice(0, 1); // remove command from args
 
     if (command in COMMAND_HANDLERS) {
-      LOG.debug(`${player.name} -> !${command} ${args.join(' ')}`);
+      LOG.info(`${player.name} -> !${command} ${args.join(' ')}`);
 
-      COMMAND_HANDLERS[command](player, args);
+      COMMAND_HANDLERS[command](player, args, command);
     } else {
       info("Invalid command. Use !help for more information", player, COLOR.ERROR);
     }

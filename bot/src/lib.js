@@ -6,7 +6,11 @@ const TEAM = {
   BLUE: 2
 };
 
-const TICKS_PER_SECOND = 60;
+const TICKS_PER_SECOND = 60; // onGameTick is called 60 times per second
+
+const KICK_PADDING = 4; // minimum distance between player border and ball border to kick the ball
+
+const NOTIFY = 2; // notification sound id
 
 /* Chat Messages */
 
@@ -26,9 +30,8 @@ const COLOR = {
 
 function send(msg, targetId, color, style, sound, announcement) {
   if (typeof msg === 'string' && msg.trim().length > 0) {
-    if (targetId === null) {
-      LOG.debug(msg);
-    }
+    LOG.debug(msg);
+    
     if (announcement || !HOST_PLAYER) {
       room.sendAnnouncement(msg, targetId, color, style, sound);
     } else {
@@ -63,12 +66,12 @@ function info(msg, player = null, color = COLOR.INFO, style = 'normal') {
   message(msg, player, color, style, 1, true);
 }
 
-function warn(msg, player = null, color = COLOR.WARNING, style = 'normal') {
-  info(msg, player, color, style);
+function warn(msg, player = null, sound = 1, style = 'normal', color = COLOR.WARNING) {
+  message(msg, player, color, style, sound, true);
 }
 
 function notify(msg, color = COLOR.NOTIFY, style = 'bold') {
-  message(msg, null, color, style, 2, true);
+  message(msg, null, color, style, NOTIFY, true);
 }
 
 /* Teams */
@@ -130,11 +133,6 @@ function setPlayerTeam(player, team) {
 
 function movePlayerToSpectator(player) {
   setPlayerTeam(player, TEAM.SPECTATOR);
-}
-
-function movePlayersToSpectators() {
-  TEAMS[TEAM.RED].forEach(movePlayerToSpectator);
-  TEAMS[TEAM.BLUE].forEach(movePlayerToSpectator);
 }
 
 /* Host */
@@ -201,13 +199,17 @@ function getBall(ballIndex) {
   return room.getDiscProperties(ballIndex);
 }
 
+function getWhiteBall() {
+  return room.getDiscProperties(WHITE_BALL);
+}
+
 function getBalls(ballIndexes) {
   return ballIndexes.map(getBall);
 }
 
-function isBallMoving(ballIndex) {
+function isBallMoving(ballIndex, threshold = MIN_SPEED_THRESHOLD) {
   const ball = getBall(ballIndex);
-  return (Math.abs(ball.xspeed) > MIN_SPEED_THRESHOLD || Math.abs(ball.yspeed) > MIN_SPEED_THRESHOLD) && inPlayingArea(ball);
+  return (Math.abs(ball.xspeed) > threshold || Math.abs(ball.yspeed) > threshold) && inPlayingArea(ball);
 }
 
 function moveBall(ballIndex, pos) {
@@ -223,7 +225,7 @@ function moveBall(ballIndex, pos) {
 /* Collision Flags (bitwise) */
 
 function hasFlag(flags, flag) {
-  return (flags & flag) != 0;
+  return (flags & flag) !== 0;
 }
 
 function addFlag(flags, flag) {
@@ -246,4 +248,17 @@ function updatePlayerFlags(field, player, updatedFlags) {
       });
     }
   }
+}
+
+/* Validations */
+
+function checkInt(label, n, player, min, max) {
+  if (typeof n === 'string') {
+    n = parseInt(n);
+  }
+  if (typeof n !== 'number' || isNaN(n) || n < min || n > max) {
+    warn(`${label} must be an integer between ${min} and ${max}.`, player);
+    return false;
+  }
+  return n;
 }

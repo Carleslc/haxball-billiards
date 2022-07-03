@@ -29,7 +29,12 @@ function filter(set, condition) {
 }
 
 function distance(a, b) {
-  return Math.sqrt((b.x - a.x)**2 + (b.y - a.y)**2);
+  return Math.hypot((b.x - a.x), (b.y - a.y)); // Math.sqrt((b.x - a.x)**2 + (b.y - a.y)**2)
+}
+
+/** Normalize x with values [minX, maxX] to [a, b] */
+function normalize(x, minX, a, maxX, b) {
+  return a + (((x - minX) * (b - a)) / (maxX - minX));
 }
 
 class Position {
@@ -39,6 +44,9 @@ class Position {
   }
   equals(p) {
     return this.x === p.x && this.y === p.y;
+  }
+  closeTo(p, threshold = 5) {
+    return Math.abs(this.x - p.x) <= threshold && Math.abs(this.y - p.y) <= threshold;
   }
 }
 
@@ -60,14 +68,17 @@ class EventQueue {
     this.registered = new Set();
     this.queue = [];
   }
-  add(name, callback) {
-    if (!this.registered.has(name) && typeof callback === 'function') {
+  add(name, callback, override = false) {
+    if (override || !this.has(name)) {
       this.registered.add(name);
       this.queue.push({ name, callback });
       LOG.debug(name, '(DELAY)');
     } else {
       LOG.debug('Already added', name);
     }
+  }
+  has(name) {
+    return this.registered.has(name);
   }
   call() {
     this.queue.forEach(({ callback }) => callback());
@@ -123,7 +134,7 @@ const NO_LOG = (_) => {};
 
 class Logger {
   constructor(level = LOG_LEVEL.INFO) {
-    this._level = level;
+    this.level = level;
   }
   get level() {
     return this._level;
@@ -147,6 +158,9 @@ class Logger {
   info(...msg) {
     console.info(...msg);
   }
+  log(...msg) {
+    console.log(...msg);
+  }
   debug(...msg) {
     console.debug(...msg);
   }
@@ -158,4 +172,4 @@ class Logger {
   }
 }
 
-const LOG = new Logger();
+const LOG = new Logger(PRODUCTION ? LOG_LEVEL.WARN : LOG_LEVEL.DEBUG);

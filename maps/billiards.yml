@@ -33,7 +33,7 @@ variables:
     player-bCoef: 0.15
     player-damping: 0.8
     player-invMass: 20
-    player-kickStrength: 1250
+    player-kickStrength: 0 # 1250
     player-kickingAcceleration: 0.36
     player-kickingDamping: 0.9
     player-radius: 18
@@ -50,7 +50,7 @@ variables:
     kickOffLine-mask: [c2]
     kickOffLine-color: 085849
     tableWall-bCoef: 0.5
-    tableWall-bias: -6
+    tableWall-bias: -20
     tableWall-color: '163433'
     tableWallCorner-bCoef: 0.45
     tableBorder-bias: 40
@@ -58,6 +58,7 @@ variables:
     color-balls:
     aim:
       enable: true
+    aimDisc-radius: 60
     aim-joint:
       d0: 0
       d1: 16
@@ -78,7 +79,6 @@ variables:
     blue-spawn: [[-312, 0], [-312, -45]]
     ball-invMass: 0.1
     player-invMass: 2
-    player-kickStrength: 125
     player-bCoef: 0.01
     color-balls:
       enable: false
@@ -97,17 +97,11 @@ variables:
     tableWall-bCoef: 0.52
 
   Billiards Carambola:
-    aim:
-      raw: '// ' # same as enable: false
-    ball-invMass: 0.4
     bg-color: 66202b
     bgTable-color: 2e1418
     bgIndicator-color: ffffe4
     kickOffLine-color: 701e4e
     tableWall-color: 50161c
     tableWall-bCoef: 0.6
-    tableWall-bias: -15
-    player-invMass: 500
-    player-kickStrength: 50
     player-kickingAcceleration: 0.5
     ball-damping: 0.99

@@ -43,7 +43,7 @@
     "acceleration": 0.1,
     "kickingAcceleration": 0.36,
     "kickingDamping": 0.9,
-    "kickStrength": 125,
+    "kickStrength": 0,
     "cGroup": ["c0"]
   },
 
@@ -67,6 +67,15 @@
       "color": "ffffe4",
       "cMask": ["wall", "ball", "c0"],
       "cGroup": ["ball", "kick"]
+    },
+    "whiteBallNoAim": {
+      "radius": 11,
+      "bCoef": 0.92,
+      "invMass": 0.1,
+      "damping": 0.988,
+      "color": "ffffe4",
+      "cMask": [],
+      "cGroup": []
     },
     "redBall": {
       "radius": 11,
@@ -97,15 +106,14 @@
     },
     "tableWall": {
       "bCoef": 0.5,
-      "bias": -6,
+      "bias": -20,
       "color": "084e45",
       "cMask": ["ball", "c1", "c2"],
       "cGroup": ["wall"]
     },
     "tableWallPlayers": {
       "vis": false,
-      "bCoef": 0.5,
-      "color": "084e45",
+      "bCoef": 0,
       "cMask": ["c1", "c2"],
       "cGroup": ["wall"]
     },
@@ -190,14 +198,14 @@
       "cMask": ["ball"]
     },
     "aimDisc": {
-      "radius": 66,
+      "radius": 60,
       "invMass": 65000,
       "pos": [-178, 0],
       "color": "transparent",
       "bCoef": 0,
       "damping": 0,
       "cMask": ["c0"],
-      "cGroup": ["ball"]
+      "cGroup": ["ball", "kick"]
     }
   },
 
@@ -240,14 +248,15 @@
 
     // Aim
     { "pos": [-178, 0], "trait": "aimDisc" },
+    { "pos": [10000, 0], "trait": "whiteBallNoAim" },
 
     // Table Holes
-    { "pos": [-364, -189], "trait": "bgHole" },
-    { "pos": [0, -204], "trait": "bgHole" },
-    { "pos": [364, -189], "trait": "bgHole" },
-    { "pos": [364, 185], "trait": "bgHole" },
-    { "pos": [0, 200], "trait": "bgHole" },
-    { "pos": [-364, 185], "trait": "bgHole" }
+    { "pos": [-364, -189], "trait": "bgHole" }, // top left
+    { "pos": [0, -204], "trait": "bgHole" }, // top center
+    { "pos": [364, -189], "trait": "bgHole" }, // top right
+    { "pos": [364, 185], "trait": "bgHole" }, // bottom right
+    { "pos": [0, 200], "trait": "bgHole" }, // bottom center
+    { "pos": [-364, 185], "trait": "bgHole" } // bottom left
   ],
   
   // Points
@@ -418,18 +427,18 @@
     /* 153 */ { "x": 370, "y": 189, "trait": "bgTable" },
 
     // Playing area: Table border
-    /* 154 */ { "x": -356, "y": -153, "trait": "tableWall" },
-    /* 155 */ { "x": -328, "y": -179, "trait": "tableWall" },
-    /* 156 */ { "x": -24, "y": -179, "trait": "tableWall" },
-    /* 157 */ { "x": 24, "y": -179, "trait": "tableWall" },
-    /* 158 */ { "x": 328, "y": -179, "trait": "tableWall" },
-    /* 159 */ { "x": 356, "y": -153, "trait": "tableWall" },
-    /* 160 */ { "x": 356, "y": 149, "trait": "tableWall" },
-    /* 161 */ { "x": 328, "y": 175, "trait": "tableWall" },
-    /* 162 */ { "x": 24, "y": 175, "trait": "tableWall" },
-    /* 163 */ { "x": -24, "y": 175, "trait": "tableWall" },
-    /* 164 */ { "x": -328, "y": 175, "trait": "tableWall" },
-    /* 165 */ { "x": -356, "y": 149, "trait": "tableWall" },
+    /* 154 */ { "x": -356, "y": -153, "trait": "tableWall" }, // left top
+    /* 155 */ { "x": -328, "y": -179, "trait": "tableWall" }, // top left left
+    /* 156 */ { "x": -24, "y": -179, "trait": "tableWall" }, // top left right
+    /* 157 */ { "x": 24, "y": -179, "trait": "tableWall" }, // top right left
+    /* 158 */ { "x": 328, "y": -179, "trait": "tableWall" }, // top right right
+    /* 159 */ { "x": 356, "y": -153, "trait": "tableWall" }, // right top
+    /* 160 */ { "x": 356, "y": 149, "trait": "tableWall" }, // right bottom
+    /* 161 */ { "x": 328, "y": 175, "trait": "tableWall" }, // bottom right right
+    /* 162 */ { "x": 24, "y": 175, "trait": "tableWall" }, // bottom right left
+    /* 163 */ { "x": -24, "y": 175, "trait": "tableWall" }, // bottom left right
+    /* 164 */ { "x": -328, "y": 175, "trait": "tableWall" }, // bottom left left
+    /* 165 */ { "x": -356, "y": 149, "trait": "tableWall" }, // left bottom
 
     // Table pockets (corners & lateral pits)
     /* 166 */ { "x": -376, "y": -174, "trait": "tableWallCorner" },
@@ -656,10 +665,10 @@
     { "v0": 163, "v1": 164, "trait": "tableWall" },
     { "v0": 165, "v1": 154, "trait": "tableWall" },
 
-    { "v0": 38, "v1": 39, "trait": "tableWallPlayers" },
-    { "v0": 76, "v1": 77, "trait": "tableWallPlayers" },
-    { "v0": 114, "v1": 115, "trait": "tableWallPlayers" },
-    { "v0": 152, "v1": 153, "trait": "tableWallPlayers" },
+    { "v0": 14, "v1": 15, "trait": "tableWallPlayers" }, // 38, 39 // 20, 21
+    { "v0": 52, "v1": 53, "trait": "tableWallPlayers" }, // 76, 77 // 58, 59
+    { "v0": 88, "v1": 89, "trait": "tableWallPlayers" }, // 114, 115 // 96, 97
+    { "v0": 126, "v1": 127, "trait": "tableWallPlayers" }, // 152, 153 // 134, 135
 
     // Table pockets (corners & lateral pits)
     { "v0": 154, "v1": 166, "trait": "tableWallCorner" },
