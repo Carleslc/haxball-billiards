@@ -4,6 +4,10 @@ function choice(items) {
   return items[Math.floor(Math.random() * items.length)];
 }
 
+function capitalize(s) {
+  return s.length > 0 ? (s[0].toUpperCase() + s.slice(1)) : s;
+}
+
 function findAllIndexes(array, condition) {
   const indexes = [];
 

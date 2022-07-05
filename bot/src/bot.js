@@ -4,7 +4,7 @@
 let CURRENT_PLAYER; // player
 let CURRENT_TEAM; // team id
 
-let NEXT_PLAYERS; // team player indexes
+let NEXT_PLAYERS; // { team: [player ids] }
 let LAST_PLAYER; // last player that kicked the ball
 let EXTRA_SHOTS; // extra turns remaining from a foul
 
@@ -14,7 +14,7 @@ let GAME_OVER; // if the game is finished and about to stop
 let CHECK_GOALS; // if goals should be checked
 let WINNER_TEAM; // team who won
 let BLACK_SCORED_TEAM; // if the black was scored and by which team
-let KICKOFF; // kickoff turn?
+let KICKOFF, FIRST_KICKOFF; // kickoff turn?
 let FOUL; // has been a foul this turn?
 
 let BALLS_MOVING; // are balls currently moving?
@@ -68,6 +68,13 @@ let STACK_SIDE_HEIGHT; // height of the scored colored balls stack
 // Strength control
 const STRENGTH_MULTIPLIER = {}; // { player: int [1, 10] }
 let KICK_DISTANCE_NORMALIZE; // function to normalize a distance between [1, 10]
+let MAXIMUM_DISTANCE_TO_KICK; // distance limit to kick the ball when aiming is enabled
+
+// host player position if moved into the game
+const HOST_POSITION = {
+  [TEAM.RED]: position(-455, 136),
+  [TEAM.BLUE]: position(455, 136)
+};
 
 // Rules settings
 
@@ -228,6 +235,8 @@ function loadMapProperties() {
     const normalizationValue = (10 - 1) / (maxDistance - minDistance);
 
     KICK_DISTANCE_NORMALIZE = (d) => 1 + ((d - minDistance) * normalizationValue); // normalize(d, minDistance, 1, maxDistance, 10)
+
+    MAXIMUM_DISTANCE_TO_KICK = PLAYER_RADIUS + AIM_DISC_RADIUS * 0.8;
   }
 }
 
@@ -238,7 +247,7 @@ function whiteBall(player = null) {
 function getWhiteBallPosition() {
   let whiteBallPosition = getWhiteBall();
 
-  if (WHITE_BALL_NO_AIM_SPAWN.closeTo(whiteBallPosition)) { // not yet updated
+  if (WHITE_BALL_NO_AIM_SPAWN && WHITE_BALL_NO_AIM_SPAWN.closeTo(whiteBallPosition)) { // not yet updated
     whiteBallPosition = getBall(whiteBall(CURRENT_PLAYER) === WHITE_BALL_AIM ? WHITE_BALL_NO_AIM : WHITE_BALL_AIM);
   }
 
@@ -432,58 +441,65 @@ function updateCurrentPlayer({ changeTeam = true, delayMove = false, fromFoul = 
     onBallsStatic(`${getCaller(updateCurrentPlayer)} -> updateCurrentPlayer`, () => {
       updateCurrentPlayer({ changeTeam, delayMove: false, fromFoul });
     });
-  } else if (!CURRENT_PLAYER || fromFoul || (!FOUL && !EXTRA_SHOTS)) { // update if is the update of the foul, otherwise only update if is not a foul (wait for the foul update)
-    if (USING_RULES.ONE_SHOT_EACH_PLAYER) {
-      const previousTurnPlayer = CURRENT_PLAYER;
+  } else {
+    if (!CURRENT_PLAYER || fromFoul || (!FOUL && !EXTRA_SHOTS)) {
+      if (USING_RULES.ONE_SHOT_EACH_PLAYER) {
+        const previousTurnPlayer = CURRENT_PLAYER;        
 
-      if (changeTeam) {
-        CURRENT_TEAM = getOppositeTeam(CURRENT_TEAM);
-      } else if (!CURRENT_TEAM) {
-        CURRENT_TEAM = TEAM.RED;
-      }
+        if (changeTeam || FOUL) {
+          CURRENT_TEAM = getOppositeTeam(CURRENT_TEAM);
+        } else if (!CURRENT_TEAM) {
+          CURRENT_TEAM = TEAM.RED;
+        }
 
-      if (checkPlayersRemaining()) {
-        let currentIndex = NEXT_PLAYERS[CURRENT_TEAM];
-        let currentTeamPlayers = TEAMS[CURRENT_TEAM];
-      
-        CURRENT_PLAYER = currentTeamPlayers[currentIndex];
-        NEXT_PLAYERS[CURRENT_TEAM] = (currentIndex + 1) % currentTeamPlayers.length;
-    
-        if (CURRENT_PLAYER) {
-          CURRENT_PLAYER = room.getPlayer(CURRENT_PLAYER.id);
-
-          movePlayersOutOfTurn();
-
-          if (!previousTurnPlayer || CURRENT_PLAYER.id !== previousTurnPlayer.id) {
-            LOG.debug('CURRENT_PLAYER', CURRENT_PLAYER, 'EXTRA_SHOTS', EXTRA_SHOTS);
-
-            setWhiteBall(CURRENT_PLAYER);
+        if (checkPlayersRemaining()) {
+          const currentId = NEXT_PLAYERS[CURRENT_TEAM].shift();
+          const currentTeamPlayers = TEAMS[CURRENT_TEAM];
         
-            if (playersInGameLength() > 1) {
-              let turnInfo = `Turn ${getTeamIcon(CURRENT_TEAM)} ${CURRENT_PLAYER.name}`;
+          CURRENT_PLAYER = currentTeamPlayers.find(p => p.id === currentId);
+      
+          if (CURRENT_PLAYER) {
+            CURRENT_PLAYER = room.getPlayer(CURRENT_PLAYER.id);
 
-              if (fromFoul && EXTRA_SHOTS) {
-                turnInfo += `  (${EXTRA_SHOTS} ${EXTRA_SHOTS !== 1 ? 'shots' : 'shot'})`;
-              }
+            NEXT_PLAYERS[CURRENT_TEAM].push(currentId);
 
-              info(turnInfo);
+            movePlayersOutOfTurn();
+
+            if (!previousTurnPlayer || CURRENT_PLAYER.id !== previousTurnPlayer.id) {
+              setWhiteBall(CURRENT_PLAYER);
+              
+              turnInfoCurrentPlayer();
+            }
+            
+            const practice = playersInGameLength() === 1;
+            
+            if (!practice || hasOutOfTurnCollisions(CURRENT_PLAYER)) {
+              moveCurrentPlayer(!practice);
             }
           }
-          
-          const practice = playersInGameLength() === 1;
-          
-          if (!practice || hasOutOfTurnCollisions(CURRENT_PLAYER)) {
-            moveCurrentPlayer(!practice);
-          }
         }
+      } else {
+        checkPlayersRemaining();
       }
-    } else {
-      checkPlayersRemaining();
+    } else if (!FOUL && (!changeTeam || KICKOFF || EXTRA_SHOTS || hasOutOfTurnCollisions(CURRENT_PLAYER))) {
+      moveCurrentPlayer();
     }
-  } else if (!changeTeam) {
-    moveCurrentPlayer(false);
   }
   TURN_TIME = 0;
+}
+
+function turnInfoCurrentPlayer() {
+  LOG.debug('CURRENT_PLAYER', CURRENT_PLAYER, 'EXTRA_SHOTS', EXTRA_SHOTS);
+
+  if (playersInGameLength() > 1) {
+    let turnInfo = `Turn ${getTeamIcon(CURRENT_TEAM)} ${CURRENT_PLAYER.name}`;
+
+    if (EXTRA_SHOTS) {
+      turnInfo += `  (${EXTRA_SHOTS} ${EXTRA_SHOTS !== 1 ? 'shots' : 'shot'})`;
+    }
+
+    info(turnInfo);
+  }
 }
 
 function extraShotsInfo() {
@@ -502,18 +518,16 @@ function speedInfo(player) {
   }
 }
 
-function updateNextPlayers() {
-  Object.entries(NEXT_PLAYERS).forEach(([team, nextIndex]) => {
-    const teamPlayers = TEAMS[team];
-    NEXT_PLAYERS[team] = teamPlayers.length > 0 ? (nextIndex % teamPlayers.length) : 0;
+function updateNextPlayers(player, add = false) {
+  Object.keys(NEXT_PLAYERS).forEach((team) => {
+    NEXT_PLAYERS[team] = NEXT_PLAYERS[team].filter(id => id !== player.id);
   });
+  if (add) {
+    NEXT_PLAYERS[player.team].splice(NEXT_PLAYERS[player.team].length - 1, 0, player.id);
+  }
 }
 
 function resetCurrentPlayer() {
-  NEXT_PLAYERS = {
-    [TEAM.RED]: 0,
-    [TEAM.BLUE]: 0,
-  };
   FOUL = false;
   EXTRA_SHOTS = 0;
   KICKOFF = false;
@@ -522,6 +536,11 @@ function resetCurrentPlayer() {
   BLACK_SCORED_TEAM = undefined;
   BALLS_SCORED_TURN.clear();
   enableGoals(false);
+  updateTeams();
+  NEXT_PLAYERS = {
+    [TEAM.RED]: TEAMS[TEAM.RED].map(player => player.id),
+    [TEAM.BLUE]: TEAMS[TEAM.BLUE].map(player => player.id),
+  };
 }
 
 function updatePlayerCollisions(player) {
@@ -574,7 +593,11 @@ function kickOff(enable = true) {
       moveBall(BLACK_BALL, BLACK_BALL_SPAWN);
     }
 
-    moveCurrentPlayer();
+    if (CURRENT_MAP === 'PRACTICE') {
+      FIRST_KICKOFF = true;
+    }
+
+    moveCurrentPlayer(true, true);
   } else {
     updatePlayerCollisions(CURRENT_PLAYER);
   }
@@ -583,7 +606,7 @@ function kickOff(enable = true) {
 function moveHostPlayer(host) {
   if (host && host.team !== TEAM.SPECTATOR) {
     // Move host out of the table
-    room.setPlayerDiscProperties(host.id, position(HOST_POSITION));
+    room.setPlayerDiscProperties(host.id, HOST_POSITION[host.team]);
   }
 }
 
@@ -640,15 +663,15 @@ const PLAYER_SPAWN_POSITIONS = [ // positions where the player can spawn for its
   position(267, 89) // bottom right
 ];
 
-function moveCurrentPlayer(always = true) {
+function moveCurrentPlayer(always = true, kickoff = false) {
   if (USING_RULES.ONE_SHOT_EACH_PLAYER && CURRENT_PLAYER) {
-    if (always || KICKOFF || !playerInPlayingArea(CURRENT_PLAYER)) {
+    if (always || kickoff || KICKOFF || !playerInPlayingArea(CURRENT_PLAYER)) {
       let pos;
       let posDistanceToWhite;
 
       const whiteBallPosition = getWhiteBallPosition();
 
-      if (KICKOFF) {
+      if (kickoff || (KICKOFF && WHITE_BALL_SPAWN.closeTo(whiteBallPosition))) { // kickoff is a hint, because when KICKOFF white ball position may not be yet updated
         const teamSpawnPoints = CURRENT_TEAM === TEAM.RED ? CURRENT_MAP_OBJECT.redSpawnPoints : CURRENT_MAP_OBJECT.blueSpawnPoints;
         pos = position(teamSpawnPoints[0]);
         posDistanceToWhite = distance(pos, whiteBallPosition);
@@ -673,11 +696,10 @@ function moveCurrentPlayer(always = true) {
 
       if (always || KICKOFF || posDistanceToWhite < distance(room.getPlayer(CURRENT_PLAYER.id).position, whiteBallPosition)) {
         room.setPlayerDiscProperties(CURRENT_PLAYER.id, pos);
+        LOG.debug('moveCurrentPlayer', pos);
       }
 
       speedInfo(CURRENT_PLAYER);
-
-      LOG.debug('moveCurrrentPlayer', pos);
     }
   }
   updatePlayerCollisions(CURRENT_PLAYER);
@@ -695,12 +717,6 @@ function resetGameStatistics() {
   REMAINING_BLUE_BALLS = BLUE_BALLS.slice();
 }
 
-function gameStatistics() {
-  if (SHOTS > 0) {
-    info(`Total Shots: ${SHOTS}`);
-  }
-}
-
 function onGameStart(byPlayer) {
   LOG.info('onGameStart');
 
@@ -712,8 +728,6 @@ function onGameStart(byPlayer) {
   
   resetGameStatistics();
   resetCurrentPlayer();
-  
-  updateTeams();
 
   if (BOT_MAP) {
     moveHostPlayer(getHostPlayer());
@@ -726,6 +740,7 @@ function onGameStart(byPlayer) {
       updateCurrentPlayer({ changeTeam: !CURRENT_TEAM });
     }
   
+    FIRST_KICKOFF = true;
     kickOff();
   }
 }
@@ -735,7 +750,9 @@ function onGameStop(byPlayer) {
 
   PLAYING = false;
 
-  gameStatistics();
+  if (!GAME_OVER) {
+    gameStatistics();
+  }
   
   if (BOT_MAP) {
     movePlayersToSpectators();
@@ -756,7 +773,7 @@ function movePlayersToSpectators() {
   const redTeam = TEAMS[TEAM.RED].slice();
   const blueTeam = TEAMS[TEAM.BLUE].slice();
 
-  if (MOVE_ORDER === 0) {
+  if (MOVE_ORDER === 0 || activePlayers().length === 3) {
     // A vs B -> AB -> A vs B
     // AB vs CD -> ABCD -> AC vs BD
     // ABC vs DEF -> ABCDEF -> ACE vs BDF
@@ -965,7 +982,7 @@ function incrementTurnTime() {
 function onPlayerJoin(player) {
   LOG.info(`onPlayerJoin: ${player.name} (${player.auth})`);
 
-  warn("The bot of this room is in alpha version, please be patient if something breaks or does not work as expected.", player);
+  warn(`The bot of this room is in ${VERSION} version, please be patient if something breaks or does not work as expected.`, player);
 
   message(`Welcome ${player.name} to the HaxBilliards Pub 🎱`);
 
@@ -993,7 +1010,7 @@ function onPlayerLeave(player) {
   removeRulesVotes(player);
 
   if ((BOT_MAP || player.admin) && !chooseMap()) {
-    updateOnTeamMove(player);
+    updateOnTeamMove(player, false);
   }
   
   if (!PLAYING && N_PLAYERS > 0 && player.admin) {
@@ -1015,12 +1032,17 @@ function onPlayerActivity(player) {
   resetAFK(player);
 }
 
-function onPlayerTeamChange(player) {
+function onPlayerTeamChange(player, byPlayer) {
   if (!BOT_MAP) {
     return;
   }
 
   LOG.debug('onPlayerTeamChange', player.name, player.team);
+
+  if (byPlayer && player.id === byPlayer.id && player.team === TEAM.SPECTATOR && !isHostPlayer(byPlayer)) {
+    setAFK(player);
+    infoInactive(player);
+  }
 
   if (!CHANGING_TEAMS.has(player.id)) {
     updateRulesVotes();
@@ -1039,7 +1061,7 @@ function onPlayerTeamChange(player) {
   }
 
   if (player.team === TEAM.SPECTATOR) {
-    updateOnTeamMove(player);
+    updateOnTeamMove(player, false);
   } else if (isHostPlayer(player)) {
     moveHostPlayer(player);
   } else if (PLAYING) {
@@ -1048,10 +1070,10 @@ function onPlayerTeamChange(player) {
   }
 }
 
-function updateOnTeamMove(player) {
+function updateOnTeamMove(player, add = true) {
   if (PLAYING) {
     setTeams();
-    updateNextPlayers();
+    updateNextPlayers(player, add);
 
     LOG.debug('updateOnTeamMove', 'N_PLAYERS', N_PLAYERS, 'TEAM.SPECTATOR', TEAMS[TEAM.SPECTATOR].length);
 

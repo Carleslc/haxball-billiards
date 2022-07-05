@@ -77,7 +77,7 @@ function updateTeams(teams) {
     teams = getTeams();
   }
   TEAMS = teams;
-  LOG.debug('TEAMS updated:', getCaller(updateTeams));
+  LOG.debug('TEAMS updated', getCaller(updateTeams));
 }
 
 function startGame(delay = false) {
@@ -129,10 +129,20 @@ function setRoomHandlers() {
 
   for (const handler of handlers) {
     if (typeof this[handler] === 'function') {
-      room[handler] = this[handler];
+      room[handler] = (...args) => {
+        try {
+          return this[handler](...args);
+        } catch (e) {
+          LOG.error(e);
+        }
+      };
     }
   }
 }
 
 // Start room
-init();
+try {
+  init();
+} catch (e) {
+  LOG.error(e);
+}

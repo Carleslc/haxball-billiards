@@ -2,6 +2,8 @@
 
 [HaxBall](https://www.haxball.com/play)
 
+### **[HaxBilliards Discord](https://discord.gg/z6pH3hEWsf)**
+
 ## 🎱  ⚪️⩴ ⚜️ Billiards ⚜️ 🔴🔵 𓀙
 
 [Download Map (HaxMaps)](https://haxmaps.com/map/13561)
@@ -44,6 +46,10 @@ Learn about the `.hbs` format and the available properties.
 ### [Collision Flags](https://github.com/haxball/haxball-issues/wiki/Collision-Flags)
 
 Learn about the collision flags `cMask` and `cGroup` to determine which objects collide with each other.
+
+### [Haxball Replay Analyzer](https://haxball-replay-analyzer.github.io/) or [Saviola hbr2 uploader](https://hax.saviola.de/r/)
+
+Visualize HaxBall game replays.
 
 ### [Billiards physical properties](https://billiards.colostate.edu/faq/physics/physical-properties/)
 

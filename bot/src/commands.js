@@ -181,7 +181,7 @@ function orderDrink(player, drink) {
 
     // Set drink avatar
     setTimeout(() => {
-      message(`-> ${player.name} ${drinkMessage}`);
+      message(`${capitalize(drink)} ☞ ${player.name} ${drinkMessage}`);
       room.setPlayerAvatar(player.id, icon);
     }, DRINK_PREPARATION_SECONDS * 1000);
 
@@ -314,12 +314,12 @@ function map(player, args) {
     const mapName = args[0].toUpperCase();
     const players = playersInGameLength();
 
-    if (!PLAYING || !players || isForce(args) || (players === 1 && player.team !== TEAM.SPECTATOR)) {
-      selectNextMap(mapName, player.name);
-    } else if (CURRENT_MAP !== mapName) {
-      warn("There is currently a game being played, please stop it first or run this command again with force.", player);
-    } else {
+    if (CURRENT_MAP === mapName) {
       info(`Already playing in map ${mapName.toLowerCase()}.`, player);
+    } else if (!PLAYING || !players || isForce(args) || (players === 1 && player.team !== TEAM.SPECTATOR)) {
+      selectNextMap(mapName, player.name);
+    } else {
+      warn("There is currently a game being played, please stop it first or run this command again with force.", player);
     }
   } else {
     info(`!map [${AVAILABLE_MAPS}] [f, force]?`, player, COLOR.DEFAULT);
@@ -392,11 +392,19 @@ function setRuleset(ruleset, by) {
       onBallsStatic(key, () => {
         LOG.info(key, ruleset, by);
 
+        const lastRulesetUsingTurns = USING_RULES && USING_RULES.ONE_SHOT_EACH_PLAYER;
+
         USING_RULESET = ruleset;
         USING_RULES = rulesMapping(RULESETS[USING_RULESET]);
 
         if (USING_RULES.ONE_SHOT_EACH_PLAYER) {
-          updateCurrentPlayer();
+          if (!CURRENT_PLAYER || !lastRulesetUsingTurns) {
+            updateCurrentPlayer({ changeTeam: false });
+          } else {
+            movePlayersOutOfTurn();
+            setWhiteBall(CURRENT_PLAYER);
+            moveCurrentPlayer(false);
+          }
         } else {
           resetCollisions();
         }
@@ -463,7 +471,7 @@ function resetRules() {
 
 /* aim */
 
-HELP.push("🧭 !aim ▶️ toggle the aim disc");
+HELP.push("🧭 !aim ▶️ toggle the aiming disc");
 
 function aim(player) {
   const aimEnabled = toggleAim(player);
@@ -529,6 +537,24 @@ function avatar(player, args) {
   room.setPlayerAvatar(player.id, selected === '8' ? '🎱' : selected);
 }
 
+/* joke */
+
+let JOKE_COOLDOWN = false;
+
+function joke(player) {
+  if (!JOKE_COOLDOWN) {
+    JOKE_COOLDOWN = true;
+
+    message(choice(JOKES).split('\n').map(line => line.trim()));
+
+    setTimeout(() => {
+      JOKE_COOLDOWN = false;
+    }, JOKE_COOLDOWN_SECONDS * 1000);
+  } else {
+    message(choice(JOKE_COOLDOWN_MESSAGE), player);
+  }
+}
+
 /* teams */
 
 ADMIN_HELP.push("👥 !teams [1-4]? ▶️ select how many players can be in each team at most");
@@ -547,11 +573,39 @@ function teams(player, args) {
   }
 }
 
+/* bart */
+
+ADMIN_HELP.push(`💬 !bart {MESSAGE} ▶️ Talk as ${HOST_PLAYER}`);
+
+function bart(player, args) {
+  if (player.admin) {
+    if (args.length > 0) {
+      message(joinArgs(args));
+    } else {
+      info("Example: !bart Hello to everyone, I hope you're having a good night at the pub.", player);
+    }
+  } else {
+    const hello = [`Hello, ${player.name} 😊`];
+
+    const drinking = isDrinking(player);
+
+    if (!drinking) {
+      hello.push("Do you want a drink?");
+    }
+
+    message(hello, player);
+
+    if (!drinking) {
+      info(DRINK_MENU, player);
+    }
+  }
+}
+
 /* kick & ban */
 
 function kickban(command, player, args) {
   if (args.length > 0) {
-    const targetName = joinArgs(args);
+    const targetName = args[0];
     const target = getPlayers().find(p => p.name === targetName);
 
     if (target) {
@@ -587,9 +641,15 @@ function ban(player, args) {
 
 ADMIN_HELP.push(`🧹 !clearbans ▶️ clear the list of banned players`);
 
-function clearbans(player, _) {
+function clearbans(player) {
   room.clearBans();
   info('🧹 Floosh! Ban list has been cleared.', player, COLOR.SUCCESS);
+}
+
+/* discord */
+
+function discord(player) {
+  message('💬🎱 Join to our server: ' + HTTPS_DISCORD, player.admin ? null : player);
 }
 
 /* help */
@@ -605,6 +665,8 @@ function help(player) {
   if (player.admin) {
     info('⚜️ ADMIN ⚜️\n' + ADMIN_HELP, player, COLOR.DEFAULT);
   }
+
+  info('💬 Join our Discord: ' + HTTPS_DISCORD, player, COLOR.DEFAULT);
 }
 
 /* Command Handlers */
@@ -618,11 +680,14 @@ const COMMAND_HANDLERS = {
   'avatar': avatar,
   'aim': aim,
   '!': checkStrength,
+  'joke': joke,
   'map': map,
   'teams': adminOnly(teams),
   'kick': adminOnly(kick),
   'ban': adminOnly(ban),
   'clearbans': adminOnly(clearbans),
+  'discord': discord,
+  'bart': bart,
 };
 
 Object.keys(DRINKS).forEach(drink => {
@@ -633,23 +698,33 @@ for (let i = 1; i <= 10; i++) {
   COMMAND_HANDLERS[String(i)] = selectStrength;
 }
 
-function onPlayerChat(player, msg) {
-  if (msg.startsWith('!')) {
-    // Command
-    msg = msg.slice(1); // trim !
-    let args = msg.split(/\s+/).filter(arg => arg.length > 0); // split spaces
+function processCommand(player, msg) {
+  msg = msg.slice(1); // trim !
+  let args = msg.split(/\s+/).filter(arg => arg.length > 0); // split spaces
 
-    let command = args[0].toLowerCase();
+  let valid = false;
+
+  if (args.length > 0) {
+    const command = args[0].toLowerCase();
     args.splice(0, 1); // remove command from args
 
     if (command in COMMAND_HANDLERS) {
       LOG.info(`${player.name} -> !${command} ${args.join(' ')}`);
 
       COMMAND_HANDLERS[command](player, args, command);
-    } else {
-      info("Invalid command. Use !help for more information", player, COLOR.ERROR);
-    }
 
+      valid = true;
+    }
+  }
+
+  if (!valid) {
+    info("Invalid command. Use !help for more information", player, COLOR.ERROR);
+  }
+}
+
+function onPlayerChat(player, msg) {
+  if (msg.startsWith('!')) {
+    processCommand(player, msg);
     return false;
   } else if (N_PLAYERS === 1 && !isHostPlayer(player)) {
     setTimeout(() => {

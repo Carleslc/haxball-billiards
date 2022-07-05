@@ -13,7 +13,13 @@ function onPlayerBallKick(player) {
   }
 
   if (player.id !== CURRENT_PLAYER.id || hasOutOfTurnCollisions(player)) {
-    // FIXME increment tableWallPlayers margin
+    if (USING_RULES.ONE_SHOT_EACH_PLAYER && playerInPlayingArea(player)) {
+      movePlayerToWaitingArea(player);
+    }
+    return;
+  }
+
+  if (!kickBall(player)) {
     return;
   }
   
@@ -31,12 +37,6 @@ function onPlayerBallKick(player) {
     EXTRA_SHOTS--;
   }
   
-  kickBall(player);
-  
-  if (KICKOFF) {
-    kickOff(false);
-  }
-  
   const wereMoving = BALLS_MOVING;
   
   enableGoals();
@@ -46,13 +46,10 @@ function onPlayerBallKick(player) {
       if (USING_RULES.FOUL_BALLS_MOVING && wereMoving) {
         foul(`${RULES.FOUL_BALLS_MOVING.icon} Balls were still moving`, { delay: true });
       } else {
-        if (!EXTRA_SHOTS && playersInGameLength() > 1) {
+        if (playersInGameLength() > 1) {
           movePlayerToWaitingArea(CURRENT_PLAYER);
         }
-        waitKickBallCallback(() => {
-          checkMissOnBallsStatic();
-          updateCurrentPlayer({ delayMove: true });
-        });
+        waitKickBallCallback(onPlayerBallKickCallback);
         TURN_TIME = 0;
       }
     } else {
@@ -60,6 +57,26 @@ function onPlayerBallKick(player) {
     }
   } else if (USING_RULES.FOUL_IF_MISS) {
     waitKickBallCallback(checkMissOnBallsStatic);
+  }
+
+  checkKickOff();
+}
+
+function onPlayerBallKickCallback() {
+  checkMissOnBallsStatic();
+  updateCurrentPlayer({ delayMove: true });
+}
+
+function checkKickOff() {
+  if (FIRST_KICKOFF) {
+    waitKickBallCallback(() => {
+      onBallsStatic('firstKickOff', () => {
+        FIRST_KICKOFF = FIRST_BALL_TOUCHED === null;
+        kickOff(FIRST_KICKOFF);
+      });
+    });
+  } else if (KICKOFF) {
+    kickOff(false);
   }
 }
 
@@ -77,6 +94,10 @@ function kickBall(player) {
   const whiteBallPosition = getWhiteBall();
 
   const euclidianDistance = distance(playerPosition, whiteBallPosition);
+
+  if (euclidianDistance > MAXIMUM_DISTANCE_TO_KICK) {
+    return false; // avoid misskicks
+  }
   
   const euclidianDistanceNormalized = KICK_DISTANCE_NORMALIZE(euclidianDistance);
   
@@ -88,13 +109,12 @@ function kickBall(player) {
   
   // LOG.debug('manhattanDistance', Math.abs(manhattanDistanceX) + Math.abs(manhattanDistanceY), 'X', manhattanDistanceX, 'Y', manhattanDistanceY);
 
-  let strengthMultiplier = getPlayerStrength(player);
-  
-  if (strengthMultiplier > 8 && euclidianDistanceNormalized < 2 && closeToTableBorder(whiteBallPosition, 2*BALL_RADIUS)) {
-    strengthMultiplier = 8; // avoid wall trespassing (excessive bias)
-  }
+  const baseKickStrength = KICKOFF ? BASE_KICKOFF_KICK_STRENGTH : BASE_KICK_STRENGTH;
+  let kickStrength = baseKickStrength * getPlayerStrength(player);
 
-  const kickStrength = BASE_KICK_STRENGTH * strengthMultiplier;
+  if (kickStrength > 20 && euclidianDistanceNormalized < 2 && closeToTableBorder(whiteBallPosition, 2*BALL_RADIUS)) {
+    kickStrength = 20; // avoid wall trespassing (low bias)
+  }
 
   const speed = (1 / euclidianDistanceNormalized) * kickStrength;
   const speedX = speed * (manhattanDistanceX / maxDistanceCoords);
@@ -106,6 +126,8 @@ function kickBall(player) {
     xspeed: speedX,
     yspeed: speedY,
   });
+
+  return true;
 }
 
 let SECOND_TICKS = 0; // ticks elapsed in the current second
@@ -161,17 +183,13 @@ function foul(message, { nextTurn = true, delay = false, override = false } = {}
     }
 
     if (!GAME_OVER) {
+      movePlayerToWaitingArea(nextTurn ? CURRENT_PLAYER : LAST_PLAYER);
+      
       EXTRA_SHOTS = REMAINING_RED_BALLS.length && REMAINING_BLUE_BALLS.length ? 2 : 1;
   
       if (nextTurn && USING_RULES.ONE_SHOT_EACH_PLAYER && (!SHOTS || LAST_PLAYER.id === CURRENT_PLAYER.id || TURN_TIME >= TURN_MAX_SECONDS)) {
         updateCurrentPlayer({ delayMove: delay, fromFoul: true });
       }
-    }
-    
-    if (delay || playersInGame > 1) {
-      onBallsStatic('clearFoul', () => {
-        FOUL = false;
-      });
     }
   }
 }
@@ -208,6 +226,14 @@ function gameScores() {
       info(`${getTeamIcon(TEAM.RED)} ${nRed - REMAINING_RED_BALLS.length} - ${nBlue - REMAINING_BLUE_BALLS.length} ${getTeamIcon(TEAM.BLUE)}`, null,
         WINNER_TEAM ? getTeamColor(WINNER_TEAM) : COLOR.INFO, 'bold');
     }
+    
+    gameStatistics();
+  }
+}
+
+function gameStatistics() {
+  if (SHOTS > 0) {
+    info(`Total Shots: ${SHOTS}`);
   }
 }
 
@@ -228,7 +254,7 @@ function checkWhiteBall() {
 }
 
 function scoredWhite() {
-  const delay = playersInGameLength() > 1 && isBallMoving(BLACK_BALL);
+  const delay = playersInGameLength() > 1;
 
   const msg = "⚪️ Scored white";
 
@@ -258,16 +284,21 @@ function checkBlackBall() {
           foul(`${RULES.BLACK_AFTER_WHITE_LOSE.icon} Scored white along with black`, { nextTurn: false, override: true });
           gameOver(false);
         } else {
-          info("🎱  Scored black", null, getTeamColor(CURRENT_TEAM), 'bold');
+          let scoredMessage = '🎱';
+          if (TEAMS[BLACK_SCORED_TEAM].length > 2) {
+            scoredMessage += ' ' + LAST_PLAYER.name;
+          }
+          scoredMessage += " Scored black";
+          info(scoredMessage, null, getTeamColor(CURRENT_TEAM), 'bold');
           stackColorBall(CURRENT_TEAM, BLACK_BALL);
           gameOver(true);
         }
       } else if (SHOTS === 1) {
-        info("🎱  Scored black on the first shot! 🍀", null, COLOR.SUCCESS, 'bold');
+        info("🎱 Scored black on the first shot! 🍀", null, COLOR.SUCCESS, 'bold');
         stackColorBall(CURRENT_TEAM, BLACK_BALL);
         gameOver(true);
       } else {
-        foul("🎱❓  Scored black before the remaining balls", { nextTurn: false, override: true });
+        foul("🎱❓ Scored black before the remaining balls", { nextTurn: false, override: true });
         gameOver(false);
       }
     } else {
@@ -345,7 +376,7 @@ function checkColorBall(team, ballIndex) {
 }
 
 function scoredColorBall() {
-  if (!FOUL && EXTRA_SHOTS === 1 && USING_RULES.EXTRA_SHOT_IF_SCORED && CURRENT_PLAYER) {
+  if (!FOUL && USING_RULES.EXTRA_SHOT_IF_SCORED && CURRENT_PLAYER) {
     info(`${getTeamIcon(CURRENT_TEAM)} ${CURRENT_PLAYER.name} has another shot  🏵`);
   }
   updateCurrentPlayer({ changeTeam: FOUL });
@@ -379,7 +410,7 @@ function stackColorBall(team, ballIndex) {
 function checkBallsMoving(checkStatic = false, beforeStaticCallback = null) {
   const wereMoving = BALLS_MOVING;
 
-  if (((USING_RULES.FOUL_IF_MISS || USING_RULES.FOUL_WRONG_FIRST_BALL) && FIRST_BALL_TOUCHED === null)) {
+  if (((FIRST_KICKOFF || USING_RULES.FOUL_IF_MISS || USING_RULES.FOUL_WRONG_FIRST_BALL) && FIRST_BALL_TOUCHED === null)) {
     checkFirstBallTouched();
 
     BALLS_MOVING = FIRST_BALL_TOUCHED !== null || isBallMoving(WHITE_BALL);
@@ -415,7 +446,7 @@ function checkFirstBallTouched() {
   if (FIRST_BALL_TOUCHED !== null) {
     LOG.debug('First ball touched', FIRST_BALL_TOUCHED);
 
-    if (USING_RULES.FOUL_WRONG_FIRST_BALL) {
+    if (USING_RULES.FOUL_WRONG_FIRST_BALL && SHOTS > 1) {
       const firstBallTouchedTeam = getBallTeam(FIRST_BALL_TOUCHED);
 
       if (firstBallTouchedTeam !== CURRENT_TEAM) {

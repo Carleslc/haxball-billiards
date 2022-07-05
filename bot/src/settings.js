@@ -2,16 +2,19 @@
 
 const TOKEN = ''; // https://www.haxball.com/headlesstoken
 
+const VERSION = 'αlphα';
 const PRODUCTION = false;
 
-const ROOM = "🎱  ⚪️⩴ ⚜️ Billiards Pub ⚜️ 🔴🔵 𓀙 [αlphα]";
+const DISCORD = 'discord.gg/z6pH3hEWsf';
+
+const ROOM = "🎱  ⚪️⩴ ⚜️ Billiards Pub ⚜️ 🔴🔵 𓀙 " + DISCORD;
 // ßETA: hosting + API + !stats [only players > 1 & normal/extended rules] (finished games, shots, balls scored, black balls successfully scored, precision hit & score, fouls, win rate, ELO) + !top [ELO]
 // RELEASE: 1 week of server hosting without errors
-// FUTURE: Discord
+// FUTURE: Discord bot (game stats)
 
-const MAX_PLAYERS = 8;
 const HOST_PLAYER = '🤵🏽‍♂️ Bart'; // Bartender
 const PUBLIC_ROOM = false;
+const MAX_PLAYERS = 8;
 const PASSWORD = null;
 const GEOCODE = { code: '', lat: 40.416729, lon: -3.703339 };
 
@@ -40,8 +43,7 @@ const DEFAULT_RULESET = 'NORMAL'; // default ruleset to use
 
 const DEFAULT_STRENGTH = 5; // default strength multiplier
 const BASE_KICK_STRENGTH = 2.5; // kick strength will be BASE_KICK_STRENGTH * strength multiplier
-
-const HOST_POSITION = [-455, 136]; // host player position if moved to the game
+const BASE_KICKOFF_KICK_STRENGTH = 3; // base kick strength for kickoff
 
 const ADMINS = new Set([
   'vI7tm0KUTB-rwz5nPorf47_ZTUarz8kX4EMC-a0RmbU', // kslar
@@ -73,3 +75,95 @@ const DRINK_MENU = Object.keys(DRINKS).map(drink => `!${drink}`).join(' ');
 Object.entries(DRINKS_ALIASES).forEach(([alias, drink]) => {
   DRINKS[alias] = DRINKS[drink];
 });
+
+const JOKE_COOLDOWN_SECONDS = 60; // minimum seconds between jokes
+
+const JOKE_COOLDOWN_MESSAGE = [
+  "Mmmm... Wait a minute or so, I'm thinking of another joke.",
+  "I can not think of anything, ask me again in a while.",
+  "I'm glad you like my jokes, but wait a bit for another one."
+];
+
+const JOKES = [
+  `A teacher asks the kids at class:
+  "I want you to name things that have hair on it"
+  "A cat!", the first kid says.
+  "That's correct", teacher replies. "A cat has hair on it. Can anyone tell something else that has hair?"
+  "An owl!", says another kid.
+  The teacher said: "Sorry, an owl has feathers, not hair! Anyone else?"
+  Other kid says: "Billiard balls!"
+  Teacher: "No, no, no! Billiard balls surely don't have any hair"
+  The kid says: "I am sure they have", and turns to the boy sitting behind him:
+  "C'mon, Billiard, show your balls to the teacher!"`,
+
+  `Sex is like playing billiards.
+  You have a cue, you have balls, you have a hole
+  and the important rule is that the white one must not go in.`,
+
+  `I cleaned the billiard table with too much water.
+  Now it is a swimming pool.`,
+
+  `I hinted to my friend that if he wanted to improve his billiards game
+  he should get better equipment. Sadly... he took my cue.`,
+
+  `A man walks from the billiard table to the bartender in a pub.
+  He says to the bartender with confidence:
+  "I'd like to make a bet, that I can piss in a glass 5 meters across the room without spilling one drop!".
+  The bartender laughs out loud and asks jokily:
+  "Well how much will the bet be?" "500 euros", he shows the bartender the money and the bartender says "Deal!".
+  The man unzips his pants and starts pissing, he pisses on the bar, on the chairs,
+  on the ground and even on the bartender, everywhere except in the glass 5 meters across.
+  The bartender and the man both laughing their asses off.
+  Then the bartender asks the man: "Why are you laughing, you're 500 euro's poorer!"
+  "Well, I just made a bet with that man at the billiard table,
+  that I will piss on everything here and that you will just laugh about it for 750 euros!"`,
+
+  `Why can't an autistic kid play billiards?
+  He can't pick up cues.`,
+
+  `How many pool players does it take to change a lightbulb?
+  Five. One to change the bulb and four to stand around going "pffft, I can do that".`,
+
+  `What does a medium pizza and a pro pool player have in common?
+  Neither one can feed a family of 4.`,
+
+  `"My stomach has been bothering me, Doctor" complained the patient.
+  "What have you been eating?" asked the doctor.
+  "That's easy. I only eat pool balls."
+  "Pool balls?!" said the astonished doctor. "Maybe that's the trouble. What kind do you eat?"
+  "All kinds," replied the man, "red ones for breakfast, yellow and orange ones for lunch,
+  blue ones for afternoon snacks, and purple and black for dinner."
+  "I see the problem," said the doctor. "You haven't been getting any greens...!"`,
+
+  `Mick's wife was furiously humping away with her husbands best mate Peter, when suddenly the phone rang.
+  She hopped out of bed and returned to the sweaty sheet after a brief conversation.
+  "Who was it?" The back stabbing buddy asked.
+  "Oh, that was Mick." She replied calmly.
+  "Oh shit, I'd better be going then!" he said. "Did Mick say where he was?"
+  "Relax - he's down at the pub, playing a few games of pool."`,
+
+  `Why are police officers bad at billiards?
+  They hit eight ball first because it is black.`,
+
+  `"Dad, when I grow up, I want to be a pool player."
+  "Son, you can't have it both."`,
+
+  `Two guys are playing pool, when they notice a funeral procession passing by on the street in front of the pool hall.
+  One of the players stops shooting, goes to the front window, takes off his hat,
+  and stands respectfully silent until the procession is finished passing.
+  The other player says, "well, that was nice of you to show your respect."
+  His friend responds, "it was the least I could do, we were married for 30 years."`,
+
+  `No es lo mismo una bola negra que una negra en bolas.`,
+
+  `Where does a pool table keep its money?
+  In its pockets.`,
+
+  `Why are pool tables green?
+  You'd be green too if you had your balls shot around like that...`,
+
+  `What's green, fuzzy, and if it fell out of a tree it would kill you?
+  A pool table.`,
+];
+
+const HTTPS_DISCORD = 'https://' + DISCORD;
