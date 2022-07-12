@@ -69,7 +69,7 @@ module.exports = function(grunt) {
         options: {
           stdout: true
         },
-        command: commands(['cd ../maps/', 'python build-stadiums.py billiards.yml', 'python build-stadiums.py billiards.yml --raw']),
+        command: commands(['cd ../../maps/', 'python build-stadiums.py billiards.yml', 'python build-stadiums.py billiards.yml --raw']),
       }
     },
     // Remove intermediate files

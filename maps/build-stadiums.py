@@ -110,7 +110,7 @@ def bot_maps(stadiums):
 
   banner = '// Source: haxball-billiards/maps\n// Generated with: python build-stadiums.py billiards.yml --raw';
 
-  write_output('../bot/src/maps.js', f'{banner}\n\n{maps}');
+  write_output('../bot/HaxBall/src/maps.js', f'{banner}\n\n{maps}');
 
 if __name__ == "__main__":
   global CONFIG
