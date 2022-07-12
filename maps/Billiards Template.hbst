@@ -228,23 +228,23 @@
 
     $color-balls{ "pos": [178, 0], "trait": "redBall" },
 
-    $color-balls{ "pos": [198, -12], "trait": "blueBall" },
-    $color-balls{ "pos": [198, 12], "trait": "redBall" },
+    $color-balls{ "pos": [198, 12], "trait": "blueBall" },
+    $color-balls{ "pos": [198, -12], "trait": "redBall" },
 
-    $color-balls{ "pos": [218, -24], "trait": "redBall" },
+    $color-balls{ "pos": [218, 24], "trait": "redBall" },
     { "pos": [218, 0], "trait": "blackBall" },
-    $color-balls{ "pos": [218, 24], "trait": "blueBall"},
+    $color-balls{ "pos": [218, -24], "trait": "blueBall"},
 
-    $color-balls{ "pos": [238, -36], "trait": "blueBall" },
-    $color-balls{ "pos": [238, -12], "trait": "redBall"},
-    $color-balls{ "pos": [238, 12], "trait": "blueBall"},
-    $color-balls{ "pos": [238, 36], "trait": "redBall" },
+    $color-balls{ "pos": [238, 36], "trait": "blueBall" },
+    $color-balls{ "pos": [238, 12], "trait": "redBall"},
+    $color-balls{ "pos": [238, -12], "trait": "blueBall"},
+    $color-balls{ "pos": [238, -36], "trait": "redBall" },
 
-    $color-balls{ "pos": [258, -48], "trait": "redBall" },
-    $color-balls{ "pos": [258, -24], "trait": "blueBall" },
+    $color-balls{ "pos": [258, 48], "trait": "redBall" },
+    $color-balls{ "pos": [258, 24], "trait": "blueBall" },
     $color-balls{ "pos": [258, 0], "trait": "blueBall"},
-    $color-balls{ "pos": [258, 24], "trait": "redBall" },
-    $color-balls{ "pos": [258, 48], "trait": "blueBall" },
+    $color-balls{ "pos": [258, -24], "trait": "redBall" },
+    $color-balls{ "pos": [258, -48], "trait": "blueBall" },
 
     // Aim
     $aim{ "pos": [-178, 0], "trait": "aimDisc" },

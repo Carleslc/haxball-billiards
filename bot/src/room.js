@@ -6,7 +6,7 @@ let room; // RoomConfigObject https://github.com/haxball/haxball-issues/wiki/Hea
 let URL;
 
 let PLAYING; // if a game is started
-let N_PLAYERS; // number of players in the room
+let N_PLAYERS, N_PLAYERS_BEFORE; // number of players in the room
 
 let TEAMS; // team id to team player list
 
@@ -25,6 +25,8 @@ function init() {
         token: TOKEN,
         geo: GEOCODE
       });
+
+      scheduleDiscordReminder();
     }
 
     setRoomHandlers();
@@ -69,7 +71,9 @@ function updateIsPlaying() {
 }
 
 function updatePlayersLength() {
+  N_PLAYERS_BEFORE = N_PLAYERS;
   N_PLAYERS = getPlayers().length;
+  updateTeams();
 }
 
 function updateTeams(teams) {
@@ -80,19 +84,24 @@ function updateTeams(teams) {
   LOG.debug('TEAMS updated', getCaller(updateTeams));
 }
 
-function startGame(delay = false) {
+function startGame(delaySeconds = WAIT_GAME_START_SECONDS) {
   if (!PLAYING) {
-    setTeams();
+    setTeams(true);
+    
+    if (activePlayers().length < 2) {
+      delaySeconds = 0;
+    }
 
-    const caller = getCaller(startGame);
-    const players = activePlayers().length;
-    const delaySeconds = delay && players > 1 ? WAIT_GAME_START_SECONDS : 0;
+    if (delaySeconds > WAIT_GAME_START_SECONDS) {
+      info(`Next game will start in ${delaySeconds} seconds`);
+    }
 
-    setTimeout(() => {
+    NEXT_GAME_TASK = setTimeout(() => {
       if (playersInGameLength()) {
-        LOG.debug(caller, "-> startGame");
+        LOG.debug(getCaller(startGame), "-> startGame");
         room.startGame();
       }
+      NEXT_GAME_TASK = undefined;
     }, delaySeconds * 1000);
   }
 }
@@ -100,6 +109,9 @@ function startGame(delay = false) {
 function stopGame() {
   if (PLAYING) {
     LOG.debug(getCaller(stopGame), "-> stopGame");
+
+    LAST_GAME_SCORES = room.getScores();
+
     room.stopGame();
   }
 }

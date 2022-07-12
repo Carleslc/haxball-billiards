@@ -67,13 +67,14 @@ function rules(player, args) {
   
     if (ruleset !== 'DISABLE') {
       helpRules += "\n\n❌🟰2️⃣ Fouls are 2 turns for the opponent's team";
-      helpRules += "\n❕ Only if both teams have color balls remaining and if they do not commit another foul";
+      helpRules += "\n❌🟰1️⃣❕ Fouls are only 1 turn if at least one team has only the black ball remaining";
+      helpRules += "\n❌🎱❗️ You lose scoring the black ball and committing a foul in the same shot";
     } else {
-      helpRules += "⭕️  Rules and automatic turns are disabled.\n🎱  Game will end when the black ball is scored.";
+      helpRules += "⭕️  Rules and automatic turns are disabled.\n🛑  Blocking your opponent is illegal.\n🎱  Game will end when the black ball is scored.";
     }
 
     if (!args.length && ruleset === 'NORMAL') {
-      helpRules += '\n\n🔰 If you want to know the optional extended rules, use !rules extended'
+      helpRules += '\n\n🔰 If you want to know the optional extended rules, use !rules extended';
     }
 
     if (USING_RULESET !== ruleset) {
@@ -135,6 +136,7 @@ function drinkIcon(drink, drinkMessage = null, def = '🫗') {
 
     if (!message) {
       let currentDrink = DRINKS[drink];
+
       if (currentDrink.length > 0) {
         message = currentDrink[0];
       }
@@ -149,7 +151,7 @@ function drinkIcon(drink, drinkMessage = null, def = '🫗') {
 
 function orderDrink(player, drink) {
   if (isDrinking(player)) {
-    message("Ey! Don't drink too much too fast!", player);
+    chatHost("Ey! Don't drink too much too fast!", player);
     warn(`Please, wait at least ${WAIT_DRINK_MINUTES} minutes to order another drink.`, player);
   } else {
     // Get a random drink message
@@ -165,7 +167,7 @@ function orderDrink(player, drink) {
     };
 
     // Drink preparation
-    message("Alright! Just a moment...", player);
+    chatHost("Alright! Just a moment...", player);
 
     const host = getHostPlayer();
     setHostAvatar(host, icon, DRINK_PREPARATION_SECONDS);
@@ -181,7 +183,7 @@ function orderDrink(player, drink) {
 
     // Set drink avatar
     setTimeout(() => {
-      message(`${capitalize(drink)} ☞ ${player.name} ${drinkMessage}`);
+      chatHost(`!${drink} ☞ ${player.name} ${drinkMessage}`);
       room.setPlayerAvatar(player.id, icon);
     }, DRINK_PREPARATION_SECONDS * 1000);
 
@@ -195,6 +197,10 @@ function orderDrink(player, drink) {
     // Clear drinking status after some time
     setTimeout(() => clearDrinking(player), drinkingMillis);
   }
+}
+
+function menu(player) {
+  info(DRINK_MENU, player);
 }
 
 /* strength control */
@@ -215,7 +221,7 @@ function checkStrength(player) {
 
 const AVAILABLE_MAPS = Object.keys(MAPS).map(m => m.toLowerCase()).join(', ');
 
-HELP.push(`🔄 !vote [${AVAILABLE_MAPS}] ▶️ vote to change the current map`);
+HELP.push(`🔄 !map [${AVAILABLE_MAPS}] ▶️ change the current map`);
 
 function vote(player, args) {
   if (args.length > 0) {
@@ -239,7 +245,7 @@ function voteMap(player, map) {
     } else if (!mapVotes.has(player.id) || (currentActivePlayers.length === 1 && player.team != TEAM.SPECTATOR)) {
       mapVotes.add(player.id);
 
-      const activeVotes = filter(mapVotes, p => !isAFK(p)).length;
+      const activeVotes = filter(mapVotes, playerId => !isAFK(playerId)).length;
       
       info(`${player.name} has voted for ${map.toLowerCase()} map (${activeVotes} ${activeVotes !== 1 ? 'votes' : 'vote'})`, null, COLOR.SUCCESS);
 
@@ -269,7 +275,7 @@ function updateMapVotes() {
   Object.keys(MAPS).forEach(map => {
     const mapVotes = MAP_VOTES[map];
 
-    const activeVotes = filter(mapVotes, player => !isAFK(player)).length;
+    const activeVotes = filter(mapVotes, playerId => !isAFK(playerId)).length;
 
     totalVotes += activeVotes;
 
@@ -317,7 +323,11 @@ function map(player, args) {
     if (CURRENT_MAP === mapName) {
       info(`Already playing in map ${mapName.toLowerCase()}.`, player);
     } else if (!PLAYING || !players || isForce(args) || (players === 1 && player.team !== TEAM.SPECTATOR)) {
-      selectNextMap(mapName, player.name);
+      if (mapName in MAPS) {
+        selectNextMap(mapName, player.name);
+      } else {
+        warn(`Invalid map. Available maps: ${AVAILABLE_MAPS}`, player);
+      }
     } else {
       warn("There is currently a game being played, please stop it first or run this command again with force.", player);
     }
@@ -365,7 +375,7 @@ function voteRules(player, ruleset) {
     } else if (!rulesVotes.has(player.id) || (currentActivePlayers.length === 1 && player.team != TEAM.SPECTATOR)) {
       rulesVotes.add(player.id);
 
-      const activeVotes = filter(rulesVotes, p => !isAFK(p)).length;
+      const activeVotes = filter(rulesVotes, playerId => !isAFK(playerId)).length;
 
       info(`${player.name} has voted to use ${ruleset.toLowerCase()} rules (${activeVotes} ${activeVotes !== 1 ? 'votes' : 'vote'})`, null, COLOR.SUCCESS);
 
@@ -386,29 +396,25 @@ function setRuleset(ruleset, by) {
   ruleset = getRuleset(ruleset);
 
   if (ruleset) {
-    const key = 'setRules';
-
     if (USING_RULESET !== ruleset) {
-      onBallsStatic(key, () => {
-        LOG.info(key, ruleset, by);
+      LOG.info('setRules', ruleset, by);
 
-        const lastRulesetUsingTurns = USING_RULES && USING_RULES.ONE_SHOT_EACH_PLAYER;
+      const lastRulesetUsingTurns = USING_RULES && USING_RULES.ONE_SHOT_EACH_PLAYER;
 
-        USING_RULESET = ruleset;
-        USING_RULES = rulesMapping(RULESETS[USING_RULESET]);
+      USING_RULESET = ruleset;
+      USING_RULES = rulesMapping(RULESETS[USING_RULESET]);
 
-        if (USING_RULES.ONE_SHOT_EACH_PLAYER) {
-          if (!CURRENT_PLAYER || !lastRulesetUsingTurns) {
-            updateCurrentPlayer({ changeTeam: false });
-          } else {
-            movePlayersOutOfTurn();
-            setWhiteBall(CURRENT_PLAYER);
-            moveCurrentPlayer(false);
-          }
+      if (USING_RULES.ONE_SHOT_EACH_PLAYER) {
+        if (!CURRENT_PLAYER || !lastRulesetUsingTurns) {
+          updateCurrentPlayer();
         } else {
-          resetCollisions();
+          movePlayersOutOfTurn();
+          setWhiteBall(CURRENT_PLAYER);
+          moveCurrentPlayer(false);
         }
-      }, true);
+      } else {
+        resetCollisions();
+      }
       
       const missingRules = notImplementedRules(ruleset);
       
@@ -480,17 +486,19 @@ function aim(player) {
     setWhiteBall(CURRENT_PLAYER);
   }
 
+  const justYou = (!CURRENT_PLAYER || player.id !== CURRENT_PLAYER.id) ? ' (just for you)' : '';
+
   if (aimEnabled) {
     if (WHITE_BALL_AIM === WHITE_BALL_NO_AIM && !AIM_OPTION) {
       warn("🧭❌❗️ You can not enable aiming in this map.", player);
     } else {
-      info("🧭✅ Aiming is now enabled.", player, COLOR.SUCCESS);
+      info(`🧭✅ Aiming is now enabled${justYou}.`, player, COLOR.SUCCESS);
     }
   } else {
     if (WHITE_BALL_AIM === WHITE_BALL_NO_AIM && AIM_OPTION) {
       warn("🧭✅❗️ You can not disable aiming in this map.", player);
     } else {
-      info("🧭❌ Aiming is now disabled.", player);
+      info(`🧭❌ Aiming is now disabled${justYou}.`, player);
     }
   }
 }
@@ -528,13 +536,274 @@ function afk(player) {
   }
 }
 
+/* stats */
+
+HELP.push("📊 !stats {PLAYER}? ▶️ see your statistics or the statistics of other player in the pub");
+
+async function stats(player, args) {
+  const { target, targetPlayer } = getTarget(player, args);
+
+  if (targetPlayer) {
+    try {
+      const { data } = await getPlayerStats(targetPlayer);
+      showStatistics(player, targetPlayer, data, PLAYERS_DATA[getAuth(targetPlayer)] === null);
+    } catch (e) {
+      if (e.status) {
+        displayHttpError(`Cannot get ${targetPlayer.name} statistics`, e.status, e.error, player);
+      } else {
+        displayError(`Cannot show ${targetPlayer.name} statistics`, e, player);
+      }
+    }
+  } else {
+    warn(`Player ${target} not found in the room.`, player);
+  }
+}
+
+function me(player, args) {
+  if (!args.length || args[0] === player.name) {
+    stats(player, args);
+  } else {
+    warn("Use !me without player name to know your statistics or use !stats {PLAYER} to see statistics of others", player);
+  }
+}
+
+function cachePlayerData(auth, data) {
+  PLAYERS_DATA[auth] = data || null;
+}
+
+async function getPlayerStats(player) {
+  const auth = getAuth(player);
+  const playerCache = PLAYERS_DATA[auth];
+
+  if (playerCache) {
+    return { data: playerCache };
+  }
+  if (playerCache === null) { // cached 404
+    return { data: getGameStatistics(player) };
+  }
+  
+  try {
+    const { data } = await GET(GET_PLAYER_URL + auth);
+    if (!playerCache) {
+      cachePlayerData(auth, data);
+    }
+    return { data };
+  } catch ({ status, error }) {
+    if (status === 404) {
+      cachePlayerData(auth, null);
+      LOG.debug(player.name, 'is a new player (404)');
+      return { data: getGameStatistics(player) };
+    }
+    throw { status, error };
+  }
+}
+
+HELP.push("🆚 !game {PLAYER}? ▶️ see statistics for the current game only");
+
+function gameStats(player, args) {
+  const { target, targetPlayer } = getTarget(player, args);
+
+  if (targetPlayer) {
+    showStatistics(player, targetPlayer, getGameStatistics(targetPlayer), true, false);
+  } else {
+    warn(`Player ${target} not found in the room.`, player);
+  }
+}
+
+function getTarget(player, args) {
+  let target;
+  let targetPlayer;
+
+  if (args.length > 0) {
+    args = joinArgs(args);
+    const mention = isMention(args);
+    target = mention ? args.substring(1) : args;
+    targetPlayer = getPlayers().find(p => getTargetName(p, mention).includes(target));
+  } else {
+    target = player.name;
+    targetPlayer = player;
+  }
+
+  return { target, targetPlayer };
+}
+
+function getTargetName(player, mention = false) {
+  return (mention && player.name) ? player.name.replace(' ', '_') : player.name;
+}
+
+function showStatistics(player, targetPlayer, stats, gameStats = false, displayTotal = true) {
+  const samePlayer = targetPlayer.id === player.id;
+  let you = samePlayer ? 'You' : targetPlayer.name;
+
+  if (stats) {
+    let show = true;
+    let specialCondition;
+
+    if (CURRENT_MAP === 'PRACTICE' || playersInGameLength() === 1) {
+      if (PLAYING && targetPlayer.team !== TEAM.SPECTATOR) {
+        specialCondition = "Practice games are not tracked, so no statistics will change in the current game.";
+      } else if (!PLAYING && !displayTotal) {
+        specialCondition = "There is no active game to track statistics yet.";
+        show = false;
+      }
+    } else if (USING_RULESET === 'DISABLE' && PLAYING && targetPlayer.team !== TEAM.SPECTATOR) {
+      specialCondition = "Games with disabled rules do not change statistics.";
+    }
+
+    if (show) {
+      if (gameStats || displayTotal) {
+        updatePlayerTimePlayed(getAuth(targetPlayer));
+      }
+
+      if (!gameStats && displayTotal) {
+        stats = joinStats(stats, getGameStatistics(targetPlayer));
+      }
+
+      const color = gameStats ? COLOR.YELLOW : COLOR.GREEN;
+
+      info(targetPlayer.name, player, color, 'bold');
+
+      const losses = stats.games - stats.gamesAbandoned - stats.wins;
+      const precisionHit = rate(1 - (stats.misses / stats.shots));
+      const precisionScore = rate(stats.balls / stats.shots);
+      const winRate = rate(stats.wins / stats.games);
+      const winRateFinished = rate(stats.winsFinished / stats.gamesFinished);
+      const abandonRate = rate(stats.gamesAbandoned / stats.games);
+      const averageScore = rate(stats.score / stats.games, { scale: 1, decimals: 1 });
+
+      const statsMessage = [];
+
+      let game = room.getScores();
+
+      if (displayTotal) {
+        if (!gameStats && stats.createdAt) {
+          statsMessage.push(`🎂 First game played on ${getDateString(stats.createdAt)}`);
+        }
+      } else if (gameStats) {
+        if (!game && LAST_GAME_SCORES) {
+          game = LAST_GAME_SCORES;
+          specialCondition = "These are statistics of the last game played.";
+        }
+
+        if (game) {
+          statsMessage.push(`⏱ ${getDuration(game.time, true)} game duration`);
+        }
+      }
+
+      const timePlayed = (gameStats && game && stats.timePlayed > game.time) ? game.time : stats.timePlayed;
+
+      statsMessage.push(`⏳ ${getDuration(timePlayed, timePlayed < 3600)} time played`); // 3600s = 1h
+
+      statsMessage.push(...[
+        `💥 ${stats.shots} shots`,
+        `🌀 ${stats.misses} misses`,
+        `✳️ ${stats.balls} balls`,
+        `🪅 ${precisionHit} hit precision`,
+        `⚜️ ${precisionScore} score precision`,
+        `❌ ${stats.fouls} fouls`,
+        `⚪️ ${stats.whiteBalls} white fouls`,
+      ]);
+
+      if (displayTotal) {
+        statsMessage.push(...[
+          `🆚 ${stats.games} games`,
+          `🔆 ${winRate} win rate`,
+          `🟡 ${stats.wins} wins`,
+          `🔘 ${losses} losses`,
+          `💨 ${stats.gamesAbandoned} games abandoned`,
+          `😶‍🌫️ ${abandonRate} surrender rate`,
+          `✅ ${stats.gamesFinished} games finished`,
+          `🏅 ${stats.winsFinished} wins finished`,
+          `🔱 ${winRateFinished} win rate finished`,
+          `🎱 ${stats.blackBalls} black balls successfully scored`,
+          `🏵 ${stats.score} score`,
+          `〽️ ${averageScore} average score`,
+        ]);
+      }
+
+      const team = samePlayer ? player.team : stats.team;
+
+      if (gameStats && team && CURRENT_MAP !== 'PRACTICE') {
+        statsMessage.push(`📋 ${you} score ${getTeamIcon(team)} ${getTeamName(team).toLowerCase()} balls in this game.`);
+      }
+
+      info(statsMessage.join('\n'), player, color);
+
+      info("Details of every stat available at " + DISCORD_STATS, player);
+    }
+    
+    if (specialCondition) {
+      warn('⚠️ ' + specialCondition, player, 'bold', false);
+    }
+  } else if (displayTotal) {
+    let message = `${you} do not have game statistics yet.`;
+
+    if (targetPlayer.name === player.name) {
+      message += " Play a game to see your statistics.";
+    }
+
+    info(message, player, COLOR.DEFAULT);
+  } else if (PLAYING) {
+    you = targetPlayer.name === player.name ? 'You are' : (targetPlayer.name + ' is');
+    info(`${you} not playing in the current game.`, player, COLOR.DEFAULT);
+  } else {
+    info("There is no active game to track statistics yet.", player, COLOR.DEFAULT);
+  }
+}
+
+function joinStats(totalStats, gameStats) {
+  if (!gameStats) {
+    return totalStats;
+  }
+
+  const stats = { ...totalStats };
+
+  Object.keys(STATISTICS_DEFAULTS).forEach((key) => {
+    if (stats.hasOwnProperty(key)) {
+      stats[key] += gameStats[key];
+    }
+  });
+
+  return stats;
+}
+
+/* top */
+
+function topStats(player, args) {
+  if (player.admin) {
+    const stat = args.length > 0 ? args[0].toLowerCase() : 'score';
+
+    // TODO map stat names to stat field name, check if is valid and GET top (+ cache, invalidate on gameOver)
+  }
+  comingSoon(player);
+}
+
+/* spin */
+
+function spin() {
+  info("Maybe in the future! Join the !discord for updates.", player);
+}
+
 /* avatar */
 
 HELP.push("👤 !avatar {AVATAR} ▶️ override your avatar only for this session. 8 = 🎱");
 
 function avatar(player, args) {
   let selected = joinArgs(args);
-  room.setPlayerAvatar(player.id, selected === '8' ? '🎱' : selected);
+
+  room.setPlayerAvatar(player.id, selected === '8' ? '🎱' : (selected || null));
+}
+
+/* players */
+
+HELP.push("🕵️ !players ▶️ list players in the room");
+
+function listPlayers(player) {
+  const players = getPlayers();
+
+  const total = `Players ${players.length} / ${MAX_PLAYERS}\n`;
+
+  info(total + players.map(p => p.name + (isAFK(p) ? ' 😴' : '')).join('\n'), player, COLOR.YELLOW);
 }
 
 /* joke */
@@ -545,13 +814,13 @@ function joke(player) {
   if (!JOKE_COOLDOWN) {
     JOKE_COOLDOWN = true;
 
-    message(choice(JOKES).split('\n').map(line => line.trim()));
+    chatHost(choice(JOKES).split('\n').map(line => line.trim()));
 
     setTimeout(() => {
       JOKE_COOLDOWN = false;
     }, JOKE_COOLDOWN_SECONDS * 1000);
   } else {
-    message(choice(JOKE_COOLDOWN_MESSAGE), player);
+    chatHost(choice(JOKE_COOLDOWN_MESSAGE), player);
   }
 }
 
@@ -575,12 +844,12 @@ function teams(player, args) {
 
 /* bart */
 
-ADMIN_HELP.push(`💬 !bart {MESSAGE} ▶️ Talk as ${HOST_PLAYER}`);
+ADMIN_HELP.push(`💬 !bart {MESSAGE} ▶️ Talk as ${HOST_PLAYER} (Please, remember he is elegant and very respectful)`);
 
 function bart(player, args) {
   if (player.admin) {
     if (args.length > 0) {
-      message(joinArgs(args));
+      chatHost(joinArgs(args));
     } else {
       info("Example: !bart Hello to everyone, I hope you're having a good night at the pub.", player);
     }
@@ -593,35 +862,46 @@ function bart(player, args) {
       hello.push("Do you want a drink?");
     }
 
-    message(hello, player);
+    chatHost(hello, player);
 
     if (!drinking) {
-      info(DRINK_MENU, player);
+      menu(player);
     }
   }
+}
+
+/* bb */
+
+function bb(player) {
+  kickPlayer(player, '👋 ' + choice(["See you soon!", "Hope you enjoyed!", "Goodbye!"]));
 }
 
 /* kick & ban */
 
 function kickban(command, player, args) {
   if (args.length > 0) {
-    const targetName = args[0];
-    const target = getPlayers().find(p => p.name === targetName);
+    const { target, targetPlayer } = getTarget(player, args);
 
-    if (target) {
+    if (targetPlayer) {
       const ban = command === 'ban';
 
-      if (ban && target.admin) {
+      if (ban && targetPlayer.admin) {
         warn('Admin players cannot be banned.', player);
       } else {
         const reason = joinArgs(args.slice(1));
-        room.kickPlayer(target.id, reason, ban);
+        room.kickPlayer(targetPlayer.id, reason, ban);
       }
     } else {
-      warn(`Player ${targetName} not found in the room.`, player);
+      warn(`Player ${target} not found in the room.`, player);
     }
   } else {
     warn(`!${command} {PLAYER} {REASON}?`, player);
+  }
+}
+
+function kickPlayer(target, reason) {
+  if (!isHostPlayer(target)) {
+    room.kickPlayer(target.id, reason, false);
   }
 }
 
@@ -649,7 +929,17 @@ function clearbans(player) {
 /* discord */
 
 function discord(player) {
-  message('💬🎱 Join to our server: ' + HTTPS_DISCORD, player.admin ? null : player);
+  chatHost('💬🎱 Join to our server: ' + HTTPS_DISCORD, !player || player.admin ? null : player, COLOR.YELLOW);
+}
+
+function scheduleDiscordReminder() {
+  if (DISCORD_REMINDER_INTERVAL_MINUTES > 0) {
+    setInterval(() => {
+      if (activePlayers().length > 0) {
+        discord();
+      }
+    }, DISCORD_REMINDER_INTERVAL_MINUTES * 60 * 1000);
+  }
 }
 
 /* help */
@@ -669,19 +959,33 @@ function help(player) {
   info('💬 Join our Discord: ' + HTTPS_DISCORD, player, COLOR.DEFAULT);
 }
 
+function comingSoon(player) {
+  info('🔜 Coming soon!', player);
+}
+
 /* Command Handlers */
 
 const COMMAND_HANDLERS = {
   'help': help,
   'rules': rules,
+  '!': checkStrength,
   'setrules': setVoteRules,
   'vote': vote,
   'afk': afk,
   'avatar': avatar,
   'aim': aim,
-  '!': checkStrength,
+  'spin': spin,
+  'me': me,
+  'stats': stats,
+  'game': gameStats,
+  'top': topStats,
+  'rank': topStats,
   'joke': joke,
+  'bb': bb,
   'map': map,
+  'drink': menu,
+  'menu': menu,
+  'players': listPlayers,
   'teams': adminOnly(teams),
   'kick': adminOnly(kick),
   'ban': adminOnly(ban),
@@ -698,9 +1002,9 @@ for (let i = 1; i <= 10; i++) {
   COMMAND_HANDLERS[String(i)] = selectStrength;
 }
 
-function processCommand(player, msg) {
+async function processCommand(player, msg) {
   msg = msg.slice(1); // trim !
-  let args = msg.split(/\s+/).filter(arg => arg.length > 0); // split spaces
+  let args = msg.split(WORD_SPLIT_REGEX).filter(arg => arg.length > 0); // split & trim spaces
 
   let valid = false;
 
@@ -708,11 +1012,14 @@ function processCommand(player, msg) {
     const command = args[0].toLowerCase();
     args.splice(0, 1); // remove command from args
 
+    LOG.info(`${player.name} -> !${command} ${args.join(' ')}`);
+
     if (command in COMMAND_HANDLERS) {
-      LOG.info(`${player.name} -> !${command} ${args.join(' ')}`);
-
-      COMMAND_HANDLERS[command](player, args, command);
-
+      try {
+        await COMMAND_HANDLERS[command](player, args, command);
+      } catch (error) {
+        displayError("Cannot process command", error, player);
+      }
       valid = true;
     }
   }
@@ -722,20 +1029,71 @@ function processCommand(player, msg) {
   }
 }
 
+const BAD_WORDS_PLAYERS = {}; // players warned by bad words { auth: times }
+
+function warnBadWords(player) {
+  const auth = getAuth(player);
+
+  if (!(auth in BAD_WORDS_PLAYERS)) {
+    BAD_WORDS_PLAYERS[auth] = 0;
+  }
+
+  BAD_WORDS_PLAYERS[auth]++;
+
+  if (BAD_WORDS_PLAYERS[auth] > BAD_WORDS_WARNINGS) {
+    kickPlayer(player, "Respect on the room, please.");
+  } else {
+    warn(HOST_ICON + " Please, treat everyone with respect. Harassment, sexism, racism, or hate speech will not be tolerated in this pub.", player);
+
+    if (BAD_WORDS_PLAYERS[auth] === BAD_WORDS_WARNINGS) {
+      warn(HOST_ICON + " Be careful with your words, next time you will be kicked.", player);
+    }
+  }
+}
+
+async function sendChat(player, msg) {
+  let label;
+
+  try {
+    const { data } = await getPlayerStats(player);
+    label = `🏵 ${(data && data.score) || 0}`;
+  } catch (e) {
+    if (e.status) {
+      displayHttpError(`Cannot get ${player.name} statistics`, e.status, e.error, player);
+    } else {
+      displayError(`Cannot show ${player.name} statistics`, e);
+    }
+  }
+
+  chat(player, msg, label);
+  checkHostReply(player, msg);
+}
+
+function checkHostReply(player, msg) {
+  if (!isHostPlayer(player)) {
+    if (N_PLAYERS === 1) {
+      setTimeout(() => {
+        chatHost([
+          `Hello, ${player.name}. I'm the bartender bot of this billiards pub.`,
+          `Invite your friends with this link: ${URL}`,
+          `Meanwhile, you can practice your shots on this map or choose another with !vote`,
+          'And you can also order me a drink, see !help for more information'
+        ], player);
+      }, 1000);
+    } else if (msg === 'help') {
+      info("To know the available commands use !help", player);
+    }
+  }
+}
+
 function onPlayerChat(player, msg) {
   if (msg.startsWith('!')) {
     processCommand(player, msg);
-    return false;
-  } else if (N_PLAYERS === 1 && !isHostPlayer(player)) {
-    setTimeout(() => {
-      message([
-        `Hello, ${player.name}. I'm the bartender bot of this billiards pub.`,
-        `To play a pool game you need at least another person. Invite your friends with this link: ${URL}`,
-        `Meanwhile, you can practice your shots on this map or choose another with !vote`,
-        'And you can also order me a drink, see !help for more information'
-      ], player);
-    }, 1000);
-  } else if (msg === 'help') {
-    info("To know the available commands use !help", player);
+  } else if (containsBadWords(msg)) {
+    LOG.info(`Denied (${player.name}):`, msg);
+    warnBadWords(player);
+  } else {
+    sendChat(player, msg);
   }
+  return false;
 }

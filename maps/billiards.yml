@@ -58,7 +58,7 @@ variables:
     color-balls:
     aim:
       enable: true
-    aimDisc-radius: 60
+    aimDisc-radius: 66
     aim-joint:
       d0: 0
       d1: 16

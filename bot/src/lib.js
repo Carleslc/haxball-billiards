@@ -28,58 +28,112 @@ const COLOR = {
   DEFAULT: 0xffc933
 };
 
-function send(msg, targetId, color, style, sound, announcement) {
+function sendAnnouncement(msg, targetId, color, style, sound, log = LOG.debug) {
   if (typeof msg === 'string' && msg.trim().length > 0) {
-    LOG.debug(msg);
-    
-    if (announcement || !HOST_PLAYER) {
-      room.sendAnnouncement(msg, targetId, color, style, sound);
-    } else {
-      room.sendChat(msg, targetId);
+    if (log) {
+      log(msg);
     }
+    room.sendAnnouncement(msg, targetId, color, style, sound);
   }
 }
 
-function message(msg, player = null, color = COLOR.DEFAULT, style = 'normal', sound = 1, announcement = false) {
+function send(msg, targetPlayer = null, color = COLOR.DEFAULT, style = 'normal', sound = 1, log = LOG.debug) {
   let targetId = null;
 
-  if (player !== null) {
-    if (typeof player === 'number') {
-      targetId = player;
-    } else if (typeof player === 'object') {
-      targetId = player.id;
+  if (targetPlayer !== null) {
+    if (typeof targetPlayer === 'number') {
+      targetId = targetPlayer;
+    } else if (typeof targetPlayer === 'object') {
+      targetId = targetPlayer.id;
     }
   }
 
   if (typeof msg === 'string') {
-    send(msg, targetId, color, style, sound, announcement);
-  } else if (msg instanceof Array) {
-    send(msg[0], targetId, color, style, sound, announcement);
+    sendAnnouncement(msg, targetId, color, style, sound, log);
+  } else if (msg instanceof Array && msg.length > 0) {
+    sendAnnouncement(msg[0], targetId, color, style, sound, log);
 
     for (let line of msg.slice(1)) {
-      send(line, targetId, color, style, 0, announcement);
+      sendAnnouncement(line, targetId, color, style, 0, log);
     }
   }
 }
 
-function info(msg, player = null, color = COLOR.INFO, style = 'normal') {
-  message(msg, player, color, style, 1, true);
+function chatLog(msg) {
+  if (ENABLE_CHAT_LOG) {
+    LOG.debug(msg);
+  }
 }
 
-function warn(msg, player = null, sound = 1, style = 'normal', color = COLOR.WARNING) {
-  message(msg, player, color, style, sound, true);
+function chat(player, msg, label = null, targetPlayer = null, color = COLOR.WHITE, sound = 1, log = chatLog) {
+  if (player) {
+    if (msg instanceof Array && msg.length > 0) {
+      chat(player, msg[0], label, targetPlayer, color, sound, log);
+
+      for (let line of msg.slice(1)) {
+        chat(player, line, label, targetPlayer, color, 0, log);
+      }
+    } else {
+      // name ⟨🏵 0⟩  hi  // `${player.name} ⟨${label}⟩:  ${msg}`
+      // 🏵 0 ⎪ name:  hi  // `${label} ⎪ ${player.name}:  ${msg}`
+      label = label ? ` ⟨${label}⟩` : ':';
+      send(`${player.name}${label}  ${msg}`, targetPlayer, color, 'normal', 1, log);
+    }
+  }
 }
 
-function notify(msg, color = COLOR.NOTIFY, style = 'bold') {
-  message(msg, null, color, style, NOTIFY, true);
+function chatHost(msg, targetPlayer = null, color = COLOR.WHITE) {
+  chat(getHostPlayer(), msg, null, targetPlayer, color, 1, true);
+}
+
+function notify(msg, color = COLOR.NOTIFY, style = 'bold', log = LOG.info) {
+  send(msg, null, color, style, NOTIFY, log);
+}
+
+function info(msg, targetPlayer = null, color = COLOR.INFO, style = 'normal', log = LOG.debug) {
+  send(msg, targetPlayer, color, style, 1, log);
+}
+
+function warn(msg, targetPlayer = null, style = 'normal', sound = 1, color = COLOR.WARNING, log = LOG.debug) {
+  send(msg, targetPlayer, color, style, sound, log);
+}
+
+function error(msg, targetPlayer = null, log = LOG.debug) {
+  send(msg, targetPlayer, COLOR.ERROR, 'italic', 1, log);
+}
+
+function displayHttpError(context, status, e, player = null) {
+  LOG.error(context, status, e);
+  
+  if (player) {
+    error(`${context} (${status})` + (player.admin && e ? `: ${e}` : ''), player);
+  }
+}
+
+function displayError(context, e, player = null) {
+  LOG.error(context, e);
+
+  if (player) {
+    error(`${context}` + (player.admin && e ? `: ${e}` : ''), player);
+  }
+}
+
+function getColor(n) {
+  if (n > 0) return COLOR.SUCCESS;
+  else if (n < 0) return COLOR.RED;
+  else return COLOR.INFO;
+}
+
+function isMention(name) {
+  return name.startsWith('@');
 }
 
 /* Teams */
 
 function getTeams(host = false) {
-  let players = host ? room.getPlayerList() : getPlayers();
+  const players = host ? room.getPlayerList() : getPlayers();
 
-  let teams = {};
+  const teams = {};
 
   for (let team of Object.values(TEAM)) {
     teams[team] = [];
@@ -179,6 +233,10 @@ function playersInGame() {
   return getPlayers().filter(player => player.team !== TEAM.SPECTATOR);
 }
 
+function getSpectators() {
+  return getPlayers().filter(player => player.team === TEAM.SPECTATOR);
+}
+
 function activePlayers() {
   return getPlayers().filter(player => !isAFK(player));
 }
@@ -191,6 +249,10 @@ function playersOutOfTurn() {
   const currentPlayerId = CURRENT_PLAYER ? CURRENT_PLAYER.id : null;
 
   return getPlayers().filter(player => player.team !== TEAM.SPECTATOR && player.id !== currentPlayerId);
+}
+
+function getPlayerId(player) {
+  return typeof player === 'object' ? player.id : player;
 }
 
 /* Balls */

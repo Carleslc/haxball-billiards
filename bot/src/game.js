@@ -42,24 +42,26 @@ function onPlayerBallKick(player) {
   enableGoals();
   
   if (USING_RULES.ONE_SHOT_EACH_PLAYER) {
+    if (playersInGameLength() > 1) {
+      movePlayerToWaitingArea(player);
+    }
     if (player.id === CURRENT_PLAYER.id) {
       if (USING_RULES.FOUL_BALLS_MOVING && wereMoving) {
         foul(`${RULES.FOUL_BALLS_MOVING.icon} Balls were still moving`, { delay: true });
       } else {
-        if (playersInGameLength() > 1) {
-          movePlayerToWaitingArea(CURRENT_PLAYER);
-        }
         waitKickBallCallback(onPlayerBallKickCallback);
         TURN_TIME = 0;
       }
     } else {
-      foul(`${RULES.ONE_SHOT_EACH_PLAYER.icon} Wrong player turn!`, { nextTurn: false });
+      foul(`${RULES.ONE_SHOT_EACH_PLAYER.icon} Wrong player turn!`, { nextTurn: false, player });
     }
   } else if (USING_RULES.FOUL_IF_MISS) {
     waitKickBallCallback(checkMissOnBallsStatic);
   }
 
   checkKickOff();
+
+  updateShotStatistics(player);
 }
 
 function onPlayerBallKickCallback() {
@@ -68,21 +70,48 @@ function onPlayerBallKickCallback() {
 }
 
 function checkKickOff() {
+  if (KICKOFF) {
+    kickOff(false);
+  }
   if (FIRST_KICKOFF) {
     waitKickBallCallback(() => {
       onBallsStatic('firstKickOff', () => {
-        FIRST_KICKOFF = FIRST_BALL_TOUCHED === null;
+        FIRST_KICKOFF = isMiss();
         kickOff(FIRST_KICKOFF);
       });
     });
-  } else if (KICKOFF) {
-    kickOff(false);
   }
+}
+
+function isFirstKickOff() {
+  return SHOTS <= 1 || FIRST_KICKOFF;
 }
 
 function waitKickBallCallback(f, delayMillis=1000) {
   // wait to ensure ball is moving
   setTimeout(f, delayMillis);
+}
+
+function updateShotStatistics(player) {
+  waitKickBallCallback(() => {
+    onBallsStatic('updateStats:' + player.name, () => {
+      if (trackGame()) {
+        const stats = getGameStatistics(player);
+        
+        if (stats) {
+          stats.shots++;
+      
+          if (isMiss()) {
+            stats.misses++;
+          }
+        }
+      }
+    });
+  });
+}
+
+function isMiss() {
+  return FIRST_BALL_TOUCHED === null || (!!USING_RULES.FOUL_IF_MISS && !isFirstKickOff() && getBallTeam(FIRST_BALL_TOUCHED) !== CURRENT_TEAM);
 }
 
 function getPlayerStrength(player) {
@@ -111,6 +140,8 @@ function kickBall(player) {
 
   const baseKickStrength = KICKOFF ? BASE_KICKOFF_KICK_STRENGTH : BASE_KICK_STRENGTH;
   let kickStrength = baseKickStrength * getPlayerStrength(player);
+
+  // TODO: Close balls trespassing, calculate direction with parallel vectors (also for the wall strength limit)
 
   if (kickStrength > 20 && euclidianDistanceNormalized < 2 && closeToTableBorder(whiteBallPosition, 2*BALL_RADIUS)) {
     kickStrength = 20; // avoid wall trespassing (low bias)
@@ -149,7 +180,7 @@ function onGameTick() {
   if (BOT_MAP) {
     const tickGoals = (SECOND_TICKS % CHECK_GOALS_EVERY_TICKS) === 0;
     
-    if (CHECK_GOALS && (tickGoals || ((USING_RULES.FOUL_IF_MISS || USING_RULES.FOUL_WRONG_FIRST_BALL) && FIRST_BALL_TOUCHED === null))) {
+    if (CHECK_GOALS && (tickGoals || FIRST_BALL_TOUCHED === null)) {
       checkBallsMoving(true, checkGoals);
     } else if (tickGoals) {
       checkWhiteBall(); // check for manually pushing (without kicking) the ball out of the playing area
@@ -164,50 +195,68 @@ function enableGoals(enable = true) {
 
 function checkGoals() {
   checkColorBalls();
-  checkBlackBall();
   checkWhiteBall();
+  checkBlackBall();
 }
 
-function foul(message, { nextTurn = true, delay = false, override = false } = {}) {
+function foul(message, { nextTurn = true, changeTeam = true, delay = false, override = false, extraShots = true, lose = false, player = null } = {}) {
   const multipleFoul = FOUL;
 
-  if (!multipleFoul || override) {
-    FOUL = true;
-    
-    warn(`❌  FOUL ${message}`);
+  if (!player) {
+    player = CURRENT_PLAYER; // who committed this foul
   }
 
-  if (!multipleFoul) {
+  if (!multipleFoul || override || lose) {
+    FOUL = true;
+    
+    warn(`❌  FOUL ${message}`, null, lose ? 'bold' : 'normal', lose ? 2 : 1, COLOR.WARNING, lose ? LOG.info : LOG.debug);
+
+    if (!multipleFoul) {
+      incrementStatistics(player, 'fouls');
+    }
+
+    if (lose) {
+      gameOver(false);
+    }
+  }
+
+  if (!multipleFoul && !lose) {
     if (!delay && USING_RULES.FOUL_BALLS_MOVING) {
       delay = true;
     }
 
     if (!GAME_OVER) {
-      movePlayerToWaitingArea(nextTurn ? CURRENT_PLAYER : LAST_PLAYER);
+      movePlayerToWaitingArea(player); 
       
-      EXTRA_SHOTS = REMAINING_RED_BALLS.length && REMAINING_BLUE_BALLS.length ? 2 : 1;
+      if (extraShots) {
+        EXTRA_SHOTS = REMAINING_RED_BALLS.length && REMAINING_BLUE_BALLS.length ? 2 : 1;
+      }
   
-      if (nextTurn && USING_RULES.ONE_SHOT_EACH_PLAYER && (!SHOTS || LAST_PLAYER.id === CURRENT_PLAYER.id || TURN_TIME >= TURN_MAX_SECONDS)) {
-        updateCurrentPlayer({ delayMove: delay, fromFoul: true });
+      if (nextTurn && USING_RULES.ONE_SHOT_EACH_PLAYER) {
+        updateCurrentPlayer({ changeTeam, delayMove: delay, fromFoul: true });
       }
     }
   }
 }
 
 function gameOver(success) {
-  GAME_OVER = true;
+  if (!GAME_OVER) {
+    GAME_OVER = true;
+    
+    WINNER_TEAM = success ? CURRENT_TEAM : getOppositeTeam(CURRENT_TEAM);
   
-  WINNER_TEAM = success ? CURRENT_TEAM : getOppositeTeam(CURRENT_TEAM);
+    gameScores();
+  
+    const delay = SHOTS > 0 && playersInGameLength() > 0;
+  
+    if (delay) {
+      movePlayerToWaitingArea(CURRENT_PLAYER);
 
-  gameScores();
-
-  const delay = SHOTS > 0 && playersInGameLength();
-
-  if (delay) {
-    movePlayerToWaitingArea(CURRENT_PLAYER);
-    setTimeout(stopGame, GAME_OVER_DELAY_SECONDS * 1000);
-  } else {
-    stopGame();
+      const delaySeconds = Math.ceil(GAME_OVER_DELAY_SECONDS / 2);
+      setTimeout(stopGame, delaySeconds * 1000);
+    } else {
+      stopGame();
+    }
   }
 }
 
@@ -216,24 +265,222 @@ function gameScores() {
 
   if (winnerPlayers && winnerPlayers.length > 0) {
     winnerPlayers = winnerPlayers.map(player => player.name).join(', ');
-  
+
     notify(`${getTeamIcon(WINNER_TEAM)} ${getTeamName(WINNER_TEAM)} wins: ${winnerPlayers}`, getTeamColor(WINNER_TEAM), 'bold');
   
     if (SHOTS > 0) {
       const blackScoredWinner = BLACK_SCORED_TEAM === WINNER_TEAM;
-      const nRed = blackScoredWinner && WINNER_TEAM === TEAM.RED ? RED_BALLS.length + 1 : RED_BALLS.length;
-      const nBlue = blackScoredWinner && WINNER_TEAM === TEAM.BLUE ? BLUE_BALLS.length + 1 : BLUE_BALLS.length;
+      const nRed = blackScoredWinner && WINNER_TEAM === TEAM.RED ? RED_BALLS.size + 1 : RED_BALLS.size;
+      const nBlue = blackScoredWinner && WINNER_TEAM === TEAM.BLUE ? BLUE_BALLS.size + 1 : BLUE_BALLS.size;
       info(`${getTeamIcon(TEAM.RED)} ${nRed - REMAINING_RED_BALLS.length} - ${nBlue - REMAINING_BLUE_BALLS.length} ${getTeamIcon(TEAM.BLUE)}`, null,
-        WINNER_TEAM ? getTeamColor(WINNER_TEAM) : COLOR.INFO, 'bold');
+        WINNER_TEAM ? getTeamColor(WINNER_TEAM) : COLOR.INFO, 'bold', LOG.info);
     }
     
-    gameStatistics();
+    shotsInfo();
+
+    updateGameOverPlayersStatistics();
   }
 }
 
-function gameStatistics() {
+function shotsInfo() {
   if (SHOTS > 0) {
-    info(`Total Shots: ${SHOTS}`);
+    info(`Total Shots: ${SHOTS}`, null, COLOR.INFO, 'normal', LOG.info);
+  }
+}
+
+function updateGameOverPlayersStatistics() {
+  if (GAME_PLAYER_STATISTICS_UPDATED) {
+    return;
+  }
+  GAME_PLAYER_STATISTICS_UPDATED = true; // avoid duplicated updates
+
+  const game = room.getScores();
+
+  Object.keys(GAME_PLAYER_STATISTICS).forEach((auth) => {
+    // Stop counting time played
+    const stats = updatePlayerTimePlayed(auth, true);
+
+    // Substract paused time
+    if (game && stats.timePlayed > game.time) {
+      stats.timePlayed = Math.trunc(game.time);
+    }
+
+    // Remove fields that we don't want to be in the DB
+    delete stats.team;
+  });
+
+  if ((!BLACK_SCORED_TEAM || !game || game.time >= 60) && USING_RULESET !== 'DISABLE') {
+    // Delete players that have not been involved in this game (no fouls and < 1 minute or no shots)
+    Object.entries(GAME_PLAYER_STATISTICS)
+      .filter(([_, stats]) => {
+        return !stats.fouls && (stats.timePlayed < 60 || !stats.shots);
+      })
+      .forEach(([auth, stats]) => {
+        delete GAME_PLAYER_FIELDS[auth];
+        delete GAME_PLAYER_STATISTICS[auth];
+  
+        LOG.debug("Low game activity", auth, getPlayerByAuth(auth), stats);
+      });
+  }
+
+  const playersStats = Object.keys(GAME_PLAYER_STATISTICS);
+
+  let uniquePlayersPlayed = playersStats.length;
+
+  if (!PRODUCTION && playersInGameLength() > playersStats.length) {
+    uniquePlayersPlayed = playersInGameLength(); // allow admin multi-accounts (testing)
+  }
+
+  if (trackGame(uniquePlayersPlayed)) {
+    const gameFinished = !!BLACK_SCORED_TEAM;
+    const gameFinishedBlackWinner = gameFinished && BLACK_SCORED_TEAM === WINNER_TEAM;
+
+    // Add wins to all players of the winning team
+    if (WINNER_TEAM) {
+      TEAMS[WINNER_TEAM].forEach((winner) => {
+        const winnerPlayerStats = getGameStatistics(winner);
+  
+        if (winnerPlayerStats) {
+          winnerPlayerStats.wins++;
+    
+          if (gameFinished) {
+            winnerPlayerStats.winsFinished++;
+          }
+        }
+      });
+    }
+
+    // Add a black ball scored to the last player if it was successfully scored
+    if (gameFinishedBlackWinner && LAST_PLAYER && WINNER_TEAM === LAST_PLAYER.team) {
+      const winnerPlayerStats = getGameStatistics(LAST_PLAYER);
+
+      if (winnerPlayerStats) {
+        winnerPlayerStats.balls++;
+        winnerPlayerStats.blackBalls++;
+      }
+    }
+
+    const playing = playersInGame().map(getAuth);
+
+    // Add a game played to all players that played in this game
+    playersStats.forEach((auth) => {
+      const stats = GAME_PLAYER_STATISTICS[auth];
+
+      if (stats) {
+        stats.games++;
+  
+        if (playing.includes(auth)) {
+          if (gameFinished) {
+            stats.gamesFinished++;
+          }
+        } else {
+          stats.gamesAbandoned++;
+        }
+
+        // Calculate the score increment for this player
+        stats.score = getScore(stats);
+      }
+    });
+
+    // Calculate the ELO increment for all players that played in this game
+    incrementELO();
+
+    // Update statistics for all players that played in this game
+    postUpdatePlayerStatistics(notifyUpdateGameStatistics);
+  } else if (USING_RULESET === 'DISABLE' && (SHOTS > 0 && CURRENT_MAP !== 'PRACTICE' && uniquePlayersPlayed > 1)) {
+    postUpdatePlayerStatistics(); // update timePlayed
+  }
+}
+
+function postUpdatePlayerStatistics(callback) {
+  POST(UPDATE_PLAYERS_STATISTICS_URL, {
+    set: GAME_PLAYER_FIELDS,
+    inc: GAME_PLAYER_STATISTICS,
+  })
+  .then(({ data }) => {
+    Object.entries(data).forEach(([auth, { player }]) => {
+      cachePlayerData(auth, player);
+    });
+    if (typeof callback === 'function') {
+      callback(data);
+    }
+  })
+  .catch((e) => {
+    LOG.error('Cannot update players statistics', e);
+  });
+}
+
+function trackGame(players) {
+  return BOT_MAP && SHOTS > 0 && CURRENT_MAP !== 'PRACTICE' && USING_RULESET !== 'DISABLE' && (players || playersInGameLength()) > 1;
+}
+
+function getGameStatistics(player) {
+  return GAME_PLAYER_STATISTICS[getAuth(player)];
+}
+
+function getScore(stats) {
+  const {
+    games,
+    gamesAbandoned,
+    gamesFinished,
+    wins,
+    winsFinished,
+    blackBalls,
+    balls,
+    fouls,
+  } = stats;
+  return games*2 + gamesFinished*3 - gamesAbandoned*3 + wins*2 + winsFinished*3 + blackBalls*2 + balls - fouls;
+}
+
+// [Elo Rating System](https://en.wikipedia.org/wiki/Elo_rating_system)
+// [Fargo Ratings - a look under the hood](https://www.facebook.com/notes/349271919741780/)
+function incrementELO() {
+  // TODO: Sum ELO of all players for every team weighted by their played time, then
+  // calculate differences with the result of WINNER_TEAM, and
+  // delete team property from player game stats
+}
+
+function notifyUpdateGameStatistics(data) {
+  const updated = Object.entries(data);
+
+  const firstGamePlayers = updated.filter(([_, { inserted: firstGame }]) => firstGame);
+
+  if (firstGamePlayers.length > 0) {
+    const authPlayers = mapAuthToPlayers();
+
+    firstGamePlayers
+      .map(([auth, _]) => authPlayers[auth])
+      .forEach((player) => {
+        if (player) {
+          // must be in the room, if player left then it's undefined
+          info(`🎉 It's your first game, ${player.name}!`, null, COLOR.SUCCESS);
+          info("See your statistics with !stats", player, COLOR.NOTIFY, "bold");
+        }
+      });
+  }
+
+  updated
+    .map(([auth, { player }]) => [player, GAME_PLAYER_STATISTICS[auth]])
+    .filter(([_player, gameStats]) => !!gameStats)
+    .sort(([_p1, stats1], [_p2, stats2]) => -(stats1.score - stats2.score)) // descending
+    .forEach(([player, gameStats]) => {
+      info(`${player.name} ${gameStats.score >= 0 ? "+" : ""}${gameStats.score} 🏵`, null, getColor(gameStats.score)); // TODO: 🔰 ELO
+    });
+}
+
+function incrementStatistics(player, ...statistics) {
+  if (player && trackGame()) {
+    const stats = getGameStatistics(player);
+    
+    for (let statistic of statistics) {
+      stats[statistic]++;
+    }
+  }
+}
+
+function incrementStatisticsPlayers(players, ...statistics) {
+  if (players) {
+    players.forEach((player) => incrementStatistics(player, ...statistics));
   }
 }
 
@@ -241,7 +488,7 @@ function checkWhiteBall() {
   if (!GAME_OVER && !BALLS_SCORED_TURN.has(WHITE_BALL) && !ballInPlayingArea(WHITE_BALL) && (!WHITE_BALL_NO_AIM_SPAWN || !WHITE_BALL_NO_AIM_SPAWN.closeTo(getWhiteBall()))) {
     BALLS_SCORED_TURN.add(WHITE_BALL);
 
-    if (USING_RULES.BLACK_AFTER_WHITE_LOSE && playersInGameLength() > 1 && isBallMoving(BLACK_BALL)) {
+    if (USING_RULES.BLACK_WHITE_LOSE && playersInGameLength() > 1 && isBallMoving(BLACK_BALL)) {
       onBallsStatic('checkWhiteBall', () => {
         if (!GAME_OVER) {
           scoredWhite();
@@ -249,6 +496,10 @@ function checkWhiteBall() {
       });
     } else {
       scoredWhite();
+    }
+
+    if (USING_RULES.WHITE_FOUL) {
+      incrementStatistics(CURRENT_PLAYER, 'whiteBalls');
     }
   }
 }
@@ -272,47 +523,70 @@ function scoredWhite() {
 }
 
 function checkBlackBall() {
-  if (!GAME_OVER && !BALLS_SCORED_TURN.has(BLACK_BALL) && !ballInPlayingArea(BLACK_BALL)) {
+  if (!GAME_OVER && !BLACK_SCORED_TEAM && !BALLS_SCORED_TURN.has(BLACK_BALL) && !ballInPlayingArea(BLACK_BALL)) {
     BALLS_SCORED_TURN.add(BLACK_BALL);
     BLACK_SCORED_TEAM = CURRENT_TEAM;
 
     const practice = playersInGameLength() === 1;
 
     if (USING_RULES.BLACK_LAST && !practice) {
-      if (getRemainingBalls(CURRENT_TEAM).length === 0) {
-        if (USING_RULES.BLACK_AFTER_WHITE_LOSE && BALLS_SCORED_TURN.has(WHITE_BALL)) {
-          foul(`${RULES.BLACK_AFTER_WHITE_LOSE.icon} Scored white along with black`, { nextTurn: false, override: true });
-          gameOver(false);
-        } else {
-          let scoredMessage = '🎱';
-          if (TEAMS[BLACK_SCORED_TEAM].length > 2) {
-            scoredMessage += ' ' + LAST_PLAYER.name;
+      const scoredPlayer = LAST_PLAYER;
+      const currentTeam = CURRENT_TEAM;
+      const teamBalls = getTeamBalls(currentTeam);
+      const remainingBalls = getRemainingBalls(currentTeam).length;
+      const firstKickOff = isFirstKickOff();
+      
+      if (!remainingBalls) {
+        const scoredBlackBall = () => {
+          if (USING_RULES.BLACK_WHITE_LOSE && BALLS_SCORED_TURN.has(WHITE_BALL)) {
+            foul(`${RULES.BLACK_WHITE_LOSE.icon} Scored white along with black`, { lose: true });
+          } else if (FOUL) {
+            foul("❌🎱❗️ Scored black with a foul", { lose: true });
+          } else if (firstKickOff) {
+            // WEPF and WPA rules say that ball is repositioned, but well we leave this as an easter egg, you must be lucky enough, it's fair
+            // Also is an official rule in UPA rules
+            info("🎱 Scored black on the first shot! 🍀", null, COLOR.SUCCESS, 'bold');
+            stackColorBall(currentTeam, BLACK_BALL);
+            gameOver(true);
+          } else if (USING_RULES.BLACK_COLOR_LOSE && Array.from(BALLS_SCORED_TURN).some(scoredBall => teamBalls.has(scoredBall))) {
+            foul(`${getTeamIcon(currentTeam)}🎱❗️ Scored black along with the last ball`, { lose: true });
+          } else {
+            let scoredMessage = '🎱';
+            if (TEAMS[BLACK_SCORED_TEAM].length > 2) {
+              scoredMessage += ' ' + scoredPlayer.name;
+            }
+            scoredMessage += " Scored black successfully";
+            info(scoredMessage, null, getTeamColor(currentTeam), 'bold');
+            stackColorBall(currentTeam, BLACK_BALL);
+            gameOver(true);
           }
-          scoredMessage += " Scored black";
-          info(scoredMessage, null, getTeamColor(CURRENT_TEAM), 'bold');
-          stackColorBall(CURRENT_TEAM, BLACK_BALL);
-          gameOver(true);
+        };
+        if (USING_RULES.BLACK_WHITE_LOSE) {
+          GAME_OVER = true; // avoid game mechanics during the waiting
+          onBallsStatic('scoredBlackBall', () => {
+            GAME_OVER = false; // re-enable so scoredBlackBall can set the game over
+            scoredBlackBall();
+          }, false, true);
+        } else {
+          scoredBlackBall();
         }
-      } else if (SHOTS === 1) {
-        info("🎱 Scored black on the first shot! 🍀", null, COLOR.SUCCESS, 'bold');
-        stackColorBall(CURRENT_TEAM, BLACK_BALL);
-        gameOver(true);
       } else {
-        foul("🎱❓ Scored black before the remaining balls", { nextTurn: false, override: true });
-        gameOver(false);
+        foul("🎱❓ Scored black before the remaining balls", { lose: true });
       }
     } else {
+      const remainingBalls = getRemainingBalls(CURRENT_TEAM).length;
+
       let color;
 
       if (practice) {
-        color = CURRENT_MAP === 'PRACTICE' || !USING_RULES.BLACK_LAST || getRemainingBalls(CURRENT_TEAM).length === 0 ? COLOR.SUCCESS : COLOR.YELLOW;
+        color = (CURRENT_MAP === 'PRACTICE' || !USING_RULES.BLACK_LAST || !remainingBalls) ? COLOR.SUCCESS : COLOR.WARNING;
       } else {
         color = getTeamColor(CURRENT_TEAM);
       }
 
       info("🎱  Scored black", null, color);
 
-      if (practice && activePlayers().length === 1) {
+      if ((practice && CURRENT_MAP === 'PRACTICE') || (remainingBalls && activePlayers().length === 1)) {
         kickOff();
       } else {
         stackColorBall(CURRENT_TEAM, BLACK_BALL);
@@ -357,14 +631,22 @@ function checkColorBall(team, ballIndex) {
 
     info(`${getTeamIcon(team)} ${getTeamName(team)} scored`, null, getTeamColor(team));
 
-    if (!FOUL && USING_RULES.EXTRA_SHOT_IF_SCORED && EXTRA_SHOTS !== 1
-      && (!USING_RULES.SCORE_PLAYER_COLOR || CURRENT_TEAM === team)) {
-      EXTRA_SHOTS = 1;
+    const ownTeam = CURRENT_TEAM === team;
 
-      if (USING_RULES.ONE_SHOT_EACH_PLAYER) {
-        onBallsStatic('scoredColorBall', scoredColorBall);
-      } else {
-        scoredColorBall();
+    if (ownTeam) {
+      incrementStatistics(CURRENT_PLAYER, 'balls');
+    }
+
+    if (!FOUL) {
+      if (USING_RULES.EXTRA_SHOT_IF_SCORED && EXTRA_SHOTS !== 1
+        && (!USING_RULES.SCORE_PLAYER_COLOR || ownTeam)) {
+        EXTRA_SHOTS = 1;
+  
+        if (USING_RULES.ONE_SHOT_EACH_PLAYER) {
+          onBallsStatic('scoredColorBall', scoredColorBall);
+        } else {
+          scoredColorBall();
+        }
       }
     }
 
@@ -410,7 +692,7 @@ function stackColorBall(team, ballIndex) {
 function checkBallsMoving(checkStatic = false, beforeStaticCallback = null) {
   const wereMoving = BALLS_MOVING;
 
-  if (((FIRST_KICKOFF || USING_RULES.FOUL_IF_MISS || USING_RULES.FOUL_WRONG_FIRST_BALL) && FIRST_BALL_TOUCHED === null)) {
+  if (FIRST_BALL_TOUCHED === null) {
     checkFirstBallTouched();
 
     BALLS_MOVING = FIRST_BALL_TOUCHED !== null || isBallMoving(WHITE_BALL);
@@ -446,13 +728,9 @@ function checkFirstBallTouched() {
   if (FIRST_BALL_TOUCHED !== null) {
     LOG.debug('First ball touched', FIRST_BALL_TOUCHED);
 
-    if (USING_RULES.FOUL_WRONG_FIRST_BALL && SHOTS > 1) {
-      const firstBallTouchedTeam = getBallTeam(FIRST_BALL_TOUCHED);
-
-      if (firstBallTouchedTeam !== CURRENT_TEAM) {
-        movePlayerToWaitingArea(CURRENT_PLAYER);
-        
-        foul(`${(FIRST_BALL_TOUCHED === BLACK_BALL ? '⚫️' : getTeamIcon(firstBallTouchedTeam)) + '❔'} Wrong first touched ball`, { delay: true });
+    if (USING_RULES.FOUL_WRONG_FIRST_BALL && !isFirstKickOff()) {
+      if (getBallTeam(FIRST_BALL_TOUCHED) !== CURRENT_TEAM) {
+        foul(`${getBallIcon(FIRST_BALL_TOUCHED)}❔ Wrong first touched ball`, { delay: true });
       }
     }
   }
@@ -469,15 +747,15 @@ function someBallMoving(balls, threshold) {
 
 function checkMissOnBallsStatic() {
   onBallsStatic('checkMiss', () => {
-    if (USING_RULES.FOUL_IF_MISS && FIRST_BALL_TOUCHED === null) {
+    if (USING_RULES.FOUL_IF_MISS && isMiss()) {
       foul(`${RULES.FOUL_IF_MISS.icon} Miss`);
     }
   });
 }
 
-function onBallsStatic(name, callback, override = false) {
+function onBallsStatic(name, callback, multiple = false, priority = false) {
   if (BALLS_MOVING) {
-    BALLS_STATIC_CALLBACK.add(name, callback, override);
+    BALLS_STATIC_CALLBACK.add(name, callback, multiple, priority);
     return false;
   }
   LOG.debug(name);

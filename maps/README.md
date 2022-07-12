@@ -16,7 +16,7 @@
 
 - [**Billiards Carambola.hbs**](<./stadiums/Billiards Carambola.hbs>)
   
-  A more aggressive map without aiming help, more player shift speed and more kick strength, enough force to bounce 3 walls in a single shot without obstacles. Useful for usage of table wall indicators and _carambole / carom_ effects. Still have pockets to play normal pool games. Recommended for extended rules. Burgundy red background.
+  A more aggressive map without aiming help, more player shift speed and more kick strength, enough force to bounce 3 walls in a single shot without obstacles (power !10). Useful for usage of table wall indicators and _carambole / carom_ effects. Still have pockets to play normal pool games. Recommended for extended rules. Burgundy red background.
 
 ## Development
 

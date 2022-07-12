@@ -3,17 +3,21 @@
 const TOKEN = ''; // https://www.haxball.com/headlesstoken
 
 const VERSION = 'αlphα';
-const PRODUCTION = false;
 
 const DISCORD = 'discord.gg/z6pH3hEWsf';
 
-const ROOM = "🎱  ⚪️⩴ ⚜️ Billiards Pub ⚜️ 🔴🔵 𓀙 " + DISCORD;
-// ßETA: hosting + API + !stats [only players > 1 & normal/extended rules] (finished games, shots, balls scored, black balls successfully scored, precision hit & score, fouls, win rate, ELO) + !top [ELO]
+const ROOM = "🎱  ⚪️⩴ ⚜️ Billiards Pub ⚜️ 🔴🔵 𓀙      " + DISCORD;
+// ßETA: hosting + API + !top [ELO normal/extended, week score]
 // RELEASE: 1 week of server hosting without errors
-// FUTURE: Discord bot (game stats)
+// FUTURE: Discord bot (game stats + replays, account linking, !stats)
 
-const HOST_PLAYER = '🤵🏽‍♂️ Bart'; // Bartender
-const PUBLIC_ROOM = false;
+const HOST_ICON = '🤵🏽‍♂️';
+const HOST_PLAYER = HOST_ICON + ' Bart'; // Bartender
+
+const PRODUCTION = '$ENV' === 'prod'; // $ENV set with grunt task (dev / prod)
+
+const PUBLIC_ROOM = PRODUCTION;
+
 const MAX_PLAYERS = 8;
 const PASSWORD = null;
 const GEOCODE = { code: '', lat: 40.416729, lon: -3.703339 };
@@ -27,16 +31,21 @@ let TEAM_LIMIT = 3; // maximum players per team in a game by default
 const TURN_MAX_SECONDS = 60; // max seconds to kick the ball or change player turn
 const TURN_SECONDS_WARNING = 10; // warning before turn is expired
 const AFK_PLAYING_SECONDS = 45; // max seconds of being inactive in your turn before moving to spectators
-const AFK_SECONDS_WARNING = 10; // warning before being moved to spectators due to inactivity
+const AFK_SECONDS_WARNING = 15; // warning before being moved to spectators due to inactivity
 const MAX_FULL_AFK_MINUTES = 15; // max minutes of being inactive when the room is full
 const NEW_GAME_DELAY_SECONDS = 10; // seconds to wait until next game starts when changing a map if there is people playing
-const GAME_OVER_DELAY_SECONDS = 5; // seconds to wait until next game starts when the game finishes
-const WAIT_GAME_START_SECONDS = 1; // seconds to wait to start a game
+const GAME_OVER_DELAY_SECONDS = 10; // seconds to wait until next game starts when the game finishes
+const WAIT_GAME_START_SECONDS = 1.5; // seconds to wait to start a game
+const SEND_RULES_HINT_AFTER_SECONDS = 2; // seconds to wait after a player joins the room to send the help/rules message
 
-const MIN_SPEED_THRESHOLD = 0.02; // minimum speed to decide if a ball is still
+const MIN_SPEED_THRESHOLD = 0.022; // minimum speed to decide if a ball is still
 
 const WAIT_DRINK_MINUTES = 10; // minimum minutes to wait before ordering another drink
 const DRINK_PREPARATION_SECONDS = 3; // seconds of drink preparation until player's avatar is set
+
+const BAD_WORDS_WARNINGS = 3; // kick player when warned for bad words more than this times
+
+const DISCORD_REMINDER_INTERVAL_MINUTES = 15; // send a message with the discord link at a interval. 0 to disable
 
 const DEFAULT_MAP = 'DEFAULT'; // default game map from maps.js
 const DEFAULT_RULESET = 'NORMAL'; // default ruleset to use
@@ -45,13 +54,23 @@ const DEFAULT_STRENGTH = 5; // default strength multiplier
 const BASE_KICK_STRENGTH = 2.5; // kick strength will be BASE_KICK_STRENGTH * strength multiplier
 const BASE_KICKOFF_KICK_STRENGTH = 3; // base kick strength for kickoff
 
+const LOG_LEVEL_PRODUCTION = 'DEBUG'; // DEBUG, INFO, WARN, ERROR
+const ENABLE_CHAT_LOG = true; // LOG_LEVEL.DEBUG
+
+const BASE_ELO = 500; // starting value for the ELO score. Must be the same in the backend API environment variable BASE_ELO
+
+const API_ENV = PRODUCTION ? 'live' : 'test';
+
+const GET_PLAYER_URL = `https://api.buildable.dev/flow/v1/call/${API_ENV}/get-player-005eb6db18/`;
+const UPDATE_PLAYERS_STATISTICS_URL = `https://api.buildable.dev/flow/v1/call/${API_ENV}/add-players-statistics-5315a377f8/`;
+
 const ADMINS = new Set([
   'vI7tm0KUTB-rwz5nPorf47_ZTUarz8kX4EMC-a0RmbU', // kslar
-  'v4wxGGx5RduMWegXjl8LUZVyI8I9flQHkzBr-iMDNEg', // rat
+  'Ml-a90hTs0Wr1bMO-UxFXD9wfClNlj3JBvFu9kFD0Vg', // rat
 ]);
 
 const DRINKS = {
-  water: ["🧊💧 There you go, a glass of fresh water.", "💧🥤 You are thirsty, I see!", "💧 Yeah, a cup of water is best for a good billiards game."],
+  water: ["🧊💧 There you go, a glass of fresh water.", "💧🥤 You are thirsty, I see!", "💧 Yeah, a cup of water is the best for a good billiards game.", "💧 Yes! You have to be hydrated for a billiards match."],
   juice: ["🧃 Orange juice, a bit bitter but freshly squeezed.", "🧃 Apple's juice, very refreshing.", "🧃 Peach juice, very sweet.", "🧃 This is wine must, ha! You didn't expect that, right? It's like grape juice, don't worry, no alcohol in this."],
   soda: ["🥤 Here you have a Coke.", "🥤 Sweet and refreshing!", "🥤 Clack! Sssss! Blub, glub, glub... Fssfsss"],
   coffee: ["☕️ Milk coffee.", "☕️ Just coffee. Enjoy!", "☕️ Oh, you sleepy?", "☕️ Caffeine for the best attention to your pool match!"],
@@ -59,7 +78,7 @@ const DRINKS = {
   wine: ["🍷 You're of legal age, right?", "🍷 This is exquisite, you won't regret!", "🍷 Good choice, here you have.", "🍷 This is a Rioja spanish qualified designation of origin, excellent red wine."],
   beer: ["🍺 You're of legal age, right?", "🍺 One of the best beers you can taste around here!", "🍺 Cold beer for you!", "🍻 Cheers!", "🍺 Fresh out from the draft!"],
   cocktail: ["🍹 You're of legal age, right?", "🍹 Mixing... Chop, chop. Fizz, ssssshh... Ready!", "🍹 Sweet and a bit of alcohol.", "🍹 One of my specialties. Take a sip!", "🍸 Margarita for you, with a slice of lime and some salt around the glass."],
-  gin: ["🍸 You're of legal age, right?", "🍸 Gin and tonic, classic and bitter.", "🍸 Gin, and a bit of lime on top.", "🍸 There you go, one of the best and flavourish gin drinks around here.", "🍸 Here you go, with some lemon.", "🍸 Yeah, that's an olive."],
+  gin: ["🍸 You're of legal age, right?", "🍸 Gin and tonic, classic and bitter.", "🍸 Gin, and a bit of lime on top.", "🍸 There you go, one of the best and flavourish gin drinks around here.", "🍸 Here you go, gin with some lemon.", "🍸 Martini you said?", "🍸 Dry Martini for you. Yeah, that's an olive."],
   rum: ["🥃 You're of legal age, right?", "🥃 Here it is. The pirate's drink!", "🥃 There you go, amber rum.", "🥃 Dictador's rum from Colombia for you."],
   sake: ["🍶 You're of legal age, right?", "🍶 A bit hot, but sweet and exquisite.", "🍶 One of the best japanese sakes for you.", "🍶 This time a cold sake, quite refreshing.", "🍶 From the rice plantations to your palate."],
   vodka: ["🍸 You're of legal age, right?", "🍸 This is good for a cold, I think...", "🍸 You like strong drinks?", "🍸 водка, the russians favourite."],
@@ -67,7 +86,37 @@ const DRINKS = {
   champagne: ["🥂 Chin-Chin!", "🍾 Are ya winning?", "🍾 Time to celebrate!", "🥂 Sweet and Ssssparkling!", "🍾 Beware the heads! BUM!"],
 };
 const DRINKS_ALIASES = {
-  whiskey: 'whisky'
+  whiskey: 'whisky',
+  jb: 'whisky',
+  redlabel: 'whisky',
+  bluelabel: 'whisky',
+  johnniewalker: 'whisky',
+  jackdaniels: 'whisky',
+  jackdaniel: 'whisky',
+  passport: 'whisky',
+  ballantines: 'whisky',
+  margarita: 'cocktail',
+  martini: 'gin',
+  martin: 'gin',
+  larios: 'gin',
+  nordes: 'gin',
+  tanqueray: 'gin',
+  beefeater: 'gin',
+  bombay: 'gin',
+  martinmiller: 'gin',
+  puertodeindias: 'gin',
+  absolut: 'vodka',
+  eristoff: 'vodka',
+  dictador: 'rum',
+  brugal: 'rum',
+  cava: 'champagne',
+  coke: 'soda',
+  cola: 'soda',
+  cocacola: 'soda',
+  fanta: 'soda',
+  nestea: 'soda',
+  cha: 'tea',
+  ocha: 'tea',
 };
 
 const DRINK_MENU = Object.keys(DRINKS).map(drink => `!${drink}`).join(' ');
@@ -167,3 +216,7 @@ const JOKES = [
 ];
 
 const HTTPS_DISCORD = 'https://' + DISCORD;
+
+const DISCORD_STATS = 'https://discord.gg/TGkmuwtYve';
+
+const API_SECRET = "$API_SECRET"; // set in .env, do not modify this constant
