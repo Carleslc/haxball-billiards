@@ -30,7 +30,7 @@ const COLOR = {
 
 function sendAnnouncement(msg, targetId, color, style, sound, log = LOG.debug) {
   if (typeof msg === 'string' && msg.trim().length > 0) {
-    if (log) {
+    if (typeof log === 'function') {
       log(msg);
     }
     room.sendAnnouncement(msg, targetId, color, style, sound);
@@ -83,18 +83,18 @@ function chat(player, msg, label = null, targetPlayer = null, color = COLOR.WHIT
 }
 
 function chatHost(msg, targetPlayer = null, color = COLOR.WHITE) {
-  chat(getHostPlayer(), msg, null, targetPlayer, color, 1, true);
+  chat(getHostPlayer(), msg, null, targetPlayer, color, 1);
 }
 
-function notify(msg, color = COLOR.NOTIFY, style = 'bold', log = LOG.info) {
-  send(msg, null, color, style, NOTIFY, log);
+function notify(msg, color = COLOR.NOTIFY, style = 'bold', sound = NOTIFY, log = LOG.info) {
+  send(msg, null, color, style, sound, log);
 }
 
 function info(msg, targetPlayer = null, color = COLOR.INFO, style = 'normal', log = LOG.debug) {
   send(msg, targetPlayer, color, style, 1, log);
 }
 
-function warn(msg, targetPlayer = null, style = 'normal', sound = 1, color = COLOR.WARNING, log = LOG.debug) {
+function warn(msg, targetPlayer = null, sound = 1, style = 'normal', color = COLOR.WARNING, log = LOG.debug) {
   send(msg, targetPlayer, color, style, sound, log);
 }
 

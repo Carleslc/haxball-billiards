@@ -106,7 +106,7 @@
     },
     "tableWall": {
       "bCoef": 0.5,
-      "bias": -20,
+      "bias": -40,
       "color": "163433",
       "cMask": ["ball", "c1", "c2"],
       "cGroup": ["wall"]
@@ -211,15 +211,15 @@
 
   // Boundaries
   "planes": [
-    { "normal": [0, -1], "dist": -275, "trait": "playerBoundary" },
-    { "normal": [0, 1], "dist": -275, "trait": "playerBoundary" },
-    { "normal": [1, 0], "dist": -475, "trait": "playerBoundary" },
-    { "normal": [-1, 0], "dist": -475, "trait": "playerBoundary" },
+    { "normal": [0, -1], "dist": -275, "trait": "playerBoundary" }, // up
+    { "normal": [0, 1], "dist": -275, "trait": "playerBoundary" }, // down
+    { "normal": [-1, 0], "dist": -475, "trait": "playerBoundary" }, // left
+    { "normal": [1, 0], "dist": -475, "trait": "playerBoundary" }, // right
 
-    { "normal": [0, -1], "dist": -275, "trait": "ballBoundary" },
-    { "normal": [0, 1], "dist": -275, "trait": "ballBoundary" },
-    { "normal": [1, 0], "dist": -440, "trait": "ballBoundary" },
-    { "normal": [-1, 0], "dist": -440, "trait": "ballBoundary" }
+    { "normal": [0, -1], "dist": -275, "trait": "ballBoundary" }, // up
+    { "normal": [0, 1], "dist": -275, "trait": "ballBoundary" }, // down
+    { "normal": [-1, 0], "dist": -440, "trait": "ballBoundary" }, // left
+    { "normal": [1, 0], "dist": -440, "trait": "ballBoundary" } // right
   ],
 
   "discs": [

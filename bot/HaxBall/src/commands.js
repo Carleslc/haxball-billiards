@@ -205,7 +205,7 @@ function menu(player) {
 
 /* strength control */
 
-HELP.push(`✴️ ![1-10] ▶️ select your kick strength level, default is !${DEFAULT_STRENGTH}. Check your current strength level with !!`);
+HELP.push(`✴️ !1 .. !${MAX_PLAYER_STRENGTH} ▶️ select your kick strength level, default is !${DEFAULT_STRENGTH}. Check your current strength level with !!`);
 
 function selectStrength(player, _, multiplier) {
   STRENGTH_MULTIPLIER[player.id] = parseInt(multiplier);
@@ -221,7 +221,7 @@ function checkStrength(player) {
 
 const AVAILABLE_MAPS = Object.keys(MAPS).map(m => m.toLowerCase()).join(', ');
 
-HELP.push(`🔄 !map [${AVAILABLE_MAPS}] ▶️ change the current map`);
+HELP.push(`🔄 !vote [${AVAILABLE_MAPS}] ▶️ change the current map`);
 
 function vote(player, args) {
   if (args.length > 0) {
@@ -235,6 +235,10 @@ function vote(player, args) {
 function voteMap(player, map) {
   map = map.toUpperCase();
 
+  if (map === 'BILLIARDS') {
+    map = 'DEFAULT';
+  }
+
   const mapVotes = MAP_VOTES[map];
 
   const currentActivePlayers = activePlayers();
@@ -243,6 +247,8 @@ function voteMap(player, map) {
     if (CURRENT_MAP === map) {
       info(`Already playing in map ${map.toLowerCase()}.`, player);
     } else if (!mapVotes.has(player.id) || (currentActivePlayers.length === 1 && player.team != TEAM.SPECTATOR)) {
+      Object.values(MAP_VOTES).forEach(votes => votes.delete(player.id));
+
       mapVotes.add(player.id);
 
       const activeVotes = filter(mapVotes, playerId => !isAFK(playerId)).length;
@@ -270,12 +276,12 @@ function updateMapVotes() {
   let totalVotes = 0;
   let newMajorityMap;
 
-  const players = activePlayers().length;
+  const players = playingOrActivePlayers().length;
 
   Object.keys(MAPS).forEach(map => {
     const mapVotes = MAP_VOTES[map];
 
-    const activeVotes = filter(mapVotes, playerId => !isAFK(playerId)).length;
+    const activeVotes = filter(mapVotes, playerId => !isAFK(playerId) && (!ADMIN_MAP_CHANGE || playerId !== ADMIN_MAP_CHANGE)).length;
 
     totalVotes += activeVotes;
 
@@ -286,7 +292,7 @@ function updateMapVotes() {
 
   if (newMajorityMap) {
     selectNextMap(newMajorityMap, 'majority vote', false);
-  } else if (totalVotes === 0) {
+  } else if (!ADMIN_MAP_CHANGE && totalVotes === 0) {
     resetNextMap();
   }
 }
@@ -324,6 +330,7 @@ function map(player, args) {
       info(`Already playing in map ${mapName.toLowerCase()}.`, player);
     } else if (!PLAYING || !players || isForce(args) || (players === 1 && player.team !== TEAM.SPECTATOR)) {
       if (mapName in MAPS) {
+        ADMIN_MAP_CHANGE = player.id;
         selectNextMap(mapName, player.name);
       } else {
         warn(`Invalid map. Available maps: ${AVAILABLE_MAPS}`, player);
@@ -373,6 +380,8 @@ function voteRules(player, ruleset) {
     if (USING_RULESET === ruleset) {
       info(`Already playing with ${ruleset.toLowerCase()} rules.`, player);
     } else if (!rulesVotes.has(player.id) || (currentActivePlayers.length === 1 && player.team != TEAM.SPECTATOR)) {
+      Object.values(RULESET_VOTES).forEach(votes => votes.delete(player.id));
+
       rulesVotes.add(player.id);
 
       const activeVotes = filter(rulesVotes, playerId => !isAFK(playerId)).length;
@@ -407,6 +416,11 @@ function setRuleset(ruleset, by) {
       if (USING_RULES.ONE_SHOT_EACH_PLAYER) {
         if (!CURRENT_PLAYER || !lastRulesetUsingTurns) {
           updateCurrentPlayer();
+
+          if (!SHOTS) {
+            FIRST_KICKOFF = true;
+            kickOff(FIRST_KICKOFF);
+          }
         } else {
           movePlayersOutOfTurn();
           setWhiteBall(CURRENT_PLAYER);
@@ -414,6 +428,8 @@ function setRuleset(ruleset, by) {
         }
       } else {
         resetCollisions();
+        kickOff(false);
+        FIRST_KICKOFF = false;
       }
       
       const missingRules = notImplementedRules(ruleset);
@@ -482,23 +498,26 @@ HELP.push("🧭 !aim ▶️ toggle the aiming disc");
 function aim(player) {
   const aimEnabled = toggleAim(player);
 
-  if (CURRENT_PLAYER && player.id === CURRENT_PLAYER.id) {
+  const setNow = (CURRENT_PLAYER && player.id === CURRENT_PLAYER.id) || !USING_RULES.ONE_SHOT_EACH_PLAYER;
+
+  if (setNow) {
     setWhiteBall(CURRENT_PLAYER);
   }
 
-  const justYou = (!CURRENT_PLAYER || player.id !== CURRENT_PLAYER.id) ? ' (just for you)' : '';
+  const justYou = setNow ? '' : ' (just for you)';
+  const target = USING_RULES.ONE_SHOT_EACH_PLAYER ? player : null;
 
   if (aimEnabled) {
     if (WHITE_BALL_AIM === WHITE_BALL_NO_AIM && !AIM_OPTION) {
       warn("🧭❌❗️ You can not enable aiming in this map.", player);
     } else {
-      info(`🧭✅ Aiming is now enabled${justYou}.`, player, COLOR.SUCCESS);
+      info(`🧭✅ Aiming is now enabled${justYou}.`, target, COLOR.SUCCESS);
     }
   } else {
     if (WHITE_BALL_AIM === WHITE_BALL_NO_AIM && AIM_OPTION) {
       warn("🧭✅❗️ You can not disable aiming in this map.", player);
     } else {
-      info(`🧭❌ Aiming is now disabled${justYou}.`, player);
+      info(`🧭❌ Aiming is now disabled${justYou}.`, target);
     }
   }
 }
@@ -618,7 +637,8 @@ function getTarget(player, args) {
     args = joinArgs(args);
     const mention = isMention(args);
     target = mention ? args.substring(1) : args;
-    targetPlayer = getPlayers().find(p => getTargetName(p, mention).includes(target));
+    target = target.toLowerCase();
+    targetPlayer = getPlayers().find(p => getTargetName(p, mention).toLowerCase().includes(target));
   } else {
     target = player.name;
     targetPlayer = player;
@@ -733,7 +753,7 @@ function showStatistics(player, targetPlayer, stats, gameStats = false, displayT
     }
     
     if (specialCondition) {
-      warn('⚠️ ' + specialCondition, player, 'bold', false);
+      warn('⚠️ ' + specialCondition, player, false, 'bold');
     }
   } else if (displayTotal) {
     let message = `${you} do not have game statistics yet.`;
@@ -801,9 +821,34 @@ HELP.push("🕵️ !players ▶️ list players in the room");
 function listPlayers(player) {
   const players = getPlayers();
 
-  const total = `Players ${players.length} / ${MAX_PLAYERS}\n`;
+  let playersList = `🕵️ Players ${players.length} / ${MAX_PLAYERS}\n\n`;
 
-  info(total + players.map(p => p.name + (isAFK(p) ? ' 😴' : '')).join('\n'), player, COLOR.YELLOW);
+  playersList += players.map(p => p.name + (isAFK(p) ? ' 😴' : '')).join('\n');
+
+  const sharedConnections = {};
+
+  players.forEach((roomPlayer) => {
+    const conn = getConnection(roomPlayer);
+    const sameConnection = getPlayersByConnection(conn);
+
+    if (sameConnection.length > 1) {
+      sharedConnections[conn] = sameConnection.map(p => p.name).join(', ');
+      LOG.debug(`Connection ${conn} is shared among ${sameConnection.length} players: ${sharedConnections[conn]}`);
+    }
+  });
+
+  const sharedConnectionPlayers = Object.values(sharedConnections);
+
+  if (sharedConnectionPlayers.length > 0) {
+    playersList += '\n';
+
+    sharedConnectionPlayers.forEach((sharedConnectionGroup) => {
+      playersList += "\n🌐 These players are sharing the same connection:\n";
+      playersList += '👥 ' + sharedConnectionGroup;
+    });
+  }
+
+  info(playersList, player, COLOR.YELLOW);
 }
 
 /* joke */
@@ -998,8 +1043,8 @@ Object.keys(DRINKS).forEach(drink => {
   COMMAND_HANDLERS[drink] = (player, _) => orderDrink(player, drink);
 });
 
-for (let i = 1; i <= 10; i++) {
-  COMMAND_HANDLERS[String(i)] = selectStrength;
+for (let kickStrength = 1; kickStrength <= MAX_PLAYER_STRENGTH; kickStrength++) {
+  COMMAND_HANDLERS[String(kickStrength)] = selectStrength;
 }
 
 async function processCommand(player, msg) {
@@ -1043,7 +1088,7 @@ function warnBadWords(player) {
   if (BAD_WORDS_PLAYERS[auth] > BAD_WORDS_WARNINGS) {
     kickPlayer(player, "Respect on the room, please.");
   } else {
-    warn(HOST_ICON + " Please, treat everyone with respect. Harassment, sexism, racism, or hate speech will not be tolerated in this pub.", player);
+    warn(HOST_ICON + " Please, treat everyone with respect. Harassment, sexism, racism, or hate speech will not be tolerated in this pub.", player, NOTIFY);
 
     if (BAD_WORDS_PLAYERS[auth] === BAD_WORDS_WARNINGS) {
       warn(HOST_ICON + " Be careful with your words, next time you will be kicked.", player);

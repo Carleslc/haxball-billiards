@@ -7,7 +7,7 @@ const VERSION = 'αlphα';
 const DISCORD = 'discord.gg/z6pH3hEWsf';
 
 const ROOM = "🎱  ⚪️⩴ ⚜️ Billiards Pub ⚜️ 🔴🔵 𓀙      " + DISCORD;
-// ßETA: hosting + API + !top [ELO normal/extended, week score]
+// ßETA: hosting + API + !top {STAT = ELO,score}
 // RELEASE: 1 week of server hosting without errors
 // FUTURE: Discord bot (game stats + replays, account linking, !stats)
 
@@ -26,7 +26,15 @@ const SCORE_LIMIT = 8; // goals to win the game, 0 for infinite
 const TIME_LIMIT = 0; // max minutes per game, 0 for infinite
 const TEAMS_LOCK = true; // block players from joining teams manually?
 
+const LOG_LEVEL_PRODUCTION = 'DEBUG'; // DEBUG, INFO, WARN, ERROR
+const ENABLE_CHAT_LOG = true; // LOG_LEVEL.DEBUG
+
 let TEAM_LIMIT = 3; // maximum players per team in a game by default
+
+const ADMINS = new Set([
+  'vI7tm0KUTB-rwz5nPorf47_ZTUarz8kX4EMC-a0RmbU', // kslar
+  'tDvju5PPtZgleuldQgT7tTRvZzekP14VYEWxgnEvW5Y', // rat
+]);
 
 const TURN_MAX_SECONDS = 60; // max seconds to kick the ball or change player turn
 const TURN_SECONDS_WARNING = 10; // warning before turn is expired
@@ -38,7 +46,7 @@ const GAME_OVER_DELAY_SECONDS = 10; // seconds to wait until next game starts wh
 const WAIT_GAME_START_SECONDS = 1.5; // seconds to wait to start a game
 const SEND_RULES_HINT_AFTER_SECONDS = 2; // seconds to wait after a player joins the room to send the help/rules message
 
-const MIN_SPEED_THRESHOLD = 0.022; // minimum speed to decide if a ball is still
+const MIN_SPEED_THRESHOLD = 0.02; // minimum speed to decide if a ball is still
 
 const WAIT_DRINK_MINUTES = 10; // minimum minutes to wait before ordering another drink
 const DRINK_PREPARATION_SECONDS = 3; // seconds of drink preparation until player's avatar is set
@@ -51,11 +59,15 @@ const DEFAULT_MAP = 'DEFAULT'; // default game map from maps.js
 const DEFAULT_RULESET = 'NORMAL'; // default ruleset to use
 
 const DEFAULT_STRENGTH = 5; // default strength multiplier
-const BASE_KICK_STRENGTH = 2.5; // kick strength will be BASE_KICK_STRENGTH * strength multiplier
-const BASE_KICKOFF_KICK_STRENGTH = 3; // base kick strength for kickoff
+const MAX_PLAYER_STRENGTH = 10; // maximum available player strength
+const BASE_KICK_STRENGTH = 3; // kick strength multiplier for !1 .. !KICK_STRENGTH_RANGE_1
+const MAX_NEAR_SPEED = 20; // maximum total speed when a ball is close or will be hit in the border
 
-const LOG_LEVEL_PRODUCTION = 'DEBUG'; // DEBUG, INFO, WARN, ERROR
-const ENABLE_CHAT_LOG = true; // LOG_LEVEL.DEBUG
+const KICK_STRENGTH = {}; // available kick strengths
+
+for (let i = 1; i <= MAX_PLAYER_STRENGTH; i++) {
+  KICK_STRENGTH[i] = i * BASE_KICK_STRENGTH;
+}
 
 const BASE_ELO = 500; // starting value for the ELO score. Must be the same in the backend API environment variable BASE_ELO
 
@@ -63,11 +75,6 @@ const API_ENV = PRODUCTION ? 'live' : 'test';
 
 const GET_PLAYER_URL = `https://api.buildable.dev/flow/v1/call/${API_ENV}/get-player-005eb6db18/`;
 const UPDATE_PLAYERS_STATISTICS_URL = `https://api.buildable.dev/flow/v1/call/${API_ENV}/add-players-statistics-5315a377f8/`;
-
-const ADMINS = new Set([
-  'vI7tm0KUTB-rwz5nPorf47_ZTUarz8kX4EMC-a0RmbU', // kslar
-  'Ml-a90hTs0Wr1bMO-UxFXD9wfClNlj3JBvFu9kFD0Vg', // rat
-]);
 
 const DRINKS = {
   water: ["🧊💧 There you go, a glass of fresh water.", "💧🥤 You are thirsty, I see!", "💧 Yeah, a cup of water is the best for a good billiards game.", "💧 Yes! You have to be hydrated for a billiards match."],

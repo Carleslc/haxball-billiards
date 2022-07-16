@@ -34,6 +34,7 @@ let LAST_GAME_SCORES; // room.getScores of last game played
 const MAP_VOTES = {}; // map to set of player ids
 let SELECTING_MAP_TASK; // map selection task
 let NEXT_GAME_TASK; // game start with delay task
+let ADMIN_MAP_CHANGE; // any admin forced the selection of a map?
 
 let TURN_TIME; // current turn player elapsed time in ticks
 let TEAM_TIME_FOULS; // how many times the current team committed a foul of time exceeded in this turn before changing teams
@@ -43,12 +44,13 @@ const AFK_PLAYERS = {}; // afk { player.id: from command? }
 const AFK_TIME = {}; // player id to afk ticks
 
 const AUTH = {}; // player id to auth
+const CONN = {}; // player id to connection
 const AUTH_CACHE_TASKS = {}; // player auth to removalTask
 const MAX_AUTH_CACHE_MINUTES = WAIT_DRINK_MINUTES; // remove auth entry after player leaves the room
 
 // Ball disc indexes
 let WHITE_BALL, BLACK_BALL;
-let BLUE_BALLS, RED_BALLS;
+let RED_BALLS, BLUE_BALLS;
 
 // Aim
 const AIM_PLAYERS = new Set(); // players with aim disc preference
@@ -63,6 +65,7 @@ let WHITE_BALL_SPAWN, WHITE_BALL_NO_AIM_SPAWN, BLACK_BALL_SPAWN;
 
 let PLAYING_AREA; // { x: { min, max }, y: { min, max } }
 let PLAYING_AREA_PADDING; // distance between PLAYING_AREA.y and tableWall
+let TABLE_WALLS; // list of table walls
 
 // Where to stack the scored colored balls
 let STACK_COLOR_SIDE_RED;
@@ -70,7 +73,7 @@ let STACK_COLOR_SIDE_BLUE;
 let STACK_SIDE_HEIGHT; // height of the scored colored balls stack
 
 // Strength control
-const STRENGTH_MULTIPLIER = {}; // { player: int [1, 10] }
+const STRENGTH_MULTIPLIER = {}; // { player: int [1, MAX_PLAYER_STRENGTH] }
 let KICK_DISTANCE_NORMALIZE; // function to normalize a distance between [1, 10]
 let MAXIMUM_DISTANCE_TO_KICK; // distance limit to kick the ball when aiming is enabled
 
@@ -226,7 +229,7 @@ function getRuleset(ruleset) {
 
   if (ruleset === 'FULL') {
     ruleset = 'EXTENDED';
-  } else if (ruleset === 'DEFAULT' || ruleset === 'AUTO') {
+  } else if (ruleset === 'DEFAULT' || ruleset === 'AUTO' || ruleset === 'BASIC') {
     ruleset = 'NORMAL';
   } else if (ruleset === 'DISABLED') {
     ruleset = 'DISABLE';
@@ -279,7 +282,7 @@ function loadMapProperties() {
     const holesX = holes.map(hole => hole.pos[0]);
     const holesY = holes.map(hole => hole.pos[1]);
 
-    PLAYING_AREA = {
+    PLAYING_AREA = Object.freeze({
       x: {
         min: Math.min(...holesX),
         max: Math.max(...holesX)
@@ -288,18 +291,28 @@ function loadMapProperties() {
         min: Math.min(...holesY),
         max: Math.max(...holesY)
       }
-    };
+    });
 
     PLAYING_AREA_PADDING = PLAYING_AREA.y.max - Math.max(...CURRENT_MAP_OBJECT.vertexes.filter(vertex => vertex.trait === 'tableWall').map(vertex => vertex.y));
+
+    TABLE_WALLS = Object.freeze([
+      Line.horizontal(PLAYING_AREA.y.min + PLAYING_AREA_PADDING), // up
+      Line.horizontal(PLAYING_AREA.y.max - PLAYING_AREA_PADDING), // down
+      Line.vertical(PLAYING_AREA.x.min + PLAYING_AREA_PADDING), // left
+      Line.vertical(PLAYING_AREA.x.max - PLAYING_AREA_PADDING), // right
+    ]);
 
     const minDistance = BALL_RADIUS + PLAYER_RADIUS;
     const maxDistance = AIM_DISC_RADIUS + PLAYER_RADIUS + KICK_PADDING;
 
-    const normalizationValue = (10 - 1) / (maxDistance - minDistance);
+    const NORMALIZE_MIN = 1;
+    const NORMALIZE_MAX = 10;
 
-    KICK_DISTANCE_NORMALIZE = (d) => 1 + ((d - minDistance) * normalizationValue); // normalize(d, minDistance, 1, maxDistance, 10)
+    const normalizationValue = (NORMALIZE_MAX - NORMALIZE_MIN) / (maxDistance - minDistance);
 
-    MAXIMUM_DISTANCE_TO_KICK = PLAYER_RADIUS + AIM_DISC_RADIUS * 0.8;
+    KICK_DISTANCE_NORMALIZE = (d) => NORMALIZE_MIN + ((d - minDistance) * normalizationValue); // normalize(d, minDistance, 1, maxDistance, 10)
+
+    MAXIMUM_DISTANCE_TO_KICK = PLAYER_RADIUS + AIM_DISC_RADIUS/2 + BALL_RADIUS*2 - 1;
   }
 }
 
@@ -407,7 +420,7 @@ function inPlayingArea(pos) {
   return pos && pos.x > PLAYING_AREA.x.min && pos.x < PLAYING_AREA.x.max && pos.y > PLAYING_AREA.y.min && pos.y < PLAYING_AREA.y.max;
 }
 
-function closeToTableBorder(pos, threshold = 20) {
+function closeToTableBorder(pos, threshold = 22) { // 2*BALL_RADIUS
   threshold = PLAYING_AREA_PADDING + threshold;
 
   return pos && pos.x <= (PLAYING_AREA.x.min + threshold) || pos.x >= (PLAYING_AREA.x.max - threshold)
@@ -455,18 +468,16 @@ function selectNextMap(name, by, restart = true) {
   const mapObject = nextMap(name);
   
   if (CURRENT_MAP !== name && !SELECTING_MAP_TASK) {
-    let message = `Next map is ${mapObject.name}, set by ${by}.`;
+    notify(`Next map is ${mapObject.name}, set by ${by}.`);
   
     const delaySeconds = PLAYING && restart && playersInGameLength() > 1 ? NEW_GAME_DELAY_SECONDS : 0;
   
     if (delaySeconds > 0) {
-      message += ` Current game will be stopped in ${delaySeconds} seconds...`;
+      notify(`Current game will be stopped in ${delaySeconds} seconds...`, COLOR.NOTIFY, 'bold', 1);
     }
     
-    notify(message);
-    
     if (PLAYING && restart) {
-      SELECTING_MAP_TASK = setTimeout(() => {
+      SELECTING_MAP_TASK = setTimeout(function selectNextMapTask() {
         stopGame();
         SELECTING_MAP_TASK = undefined;
       }, delaySeconds * 1000);
@@ -477,15 +488,14 @@ function selectNextMap(name, by, restart = true) {
 }
 
 function resetNextMap() {
-  NEXT_MAP = undefined;
-  NEXT_MAP_OBJECT = undefined;
+  if (!ADMIN_MAP_CHANGE || !getPlayers().find(player => player.admin && player.id === ADMIN_MAP_CHANGE)) {
+    NEXT_MAP = undefined;
+    NEXT_MAP_OBJECT = undefined;
+    ADMIN_MAP_CHANGE = undefined;
+  }
 }
 
 function chooseMap(restart = false) {
-  if (N_PLAYERS !== N_PLAYERS_BEFORE) {
-    LOG.debug(`${N_PLAYERS_BEFORE} -> ${N_PLAYERS} players in the room (Playing: ${PLAYING})`);
-  }
-
   if (!N_PLAYERS) {
     resetMapVoting();
     resetRulesVoting();
@@ -495,7 +505,6 @@ function chooseMap(restart = false) {
 
   if (PLAYING) {
     if (noAfk >= 2 && ((NEXT_MAP !== CURRENT_MAP && restart) || playersInGameLength() === 1)) {
-      LOG.debug('noAfk', noAfk, 'restart', restart, playersInGameLength());
       stopGame();
       return true;
     }
@@ -515,6 +524,8 @@ function chooseMap(restart = false) {
       }
     }
     return true;
+  } else {
+    LOG.debug('Already starting a game');
   }
   return false;
 }
@@ -630,7 +641,7 @@ function resetCurrentPlayer() {
 
 function updatePlayerCollisions(player) {
   // Add kickOff flag to cGroup only for extended rules or first shot (kickOffLine barrier)
-  const updateKickOffFlag = (KICKOFF && (USING_RULES.KICKOFF_RIGHT || !SHOTS)) ? addFlag : removeFlag;
+  const updateKickOffFlag = (KICKOFF && (USING_RULES.KICKOFF_RIGHT || FIRST_KICKOFF)) ? addFlag : removeFlag;
 
   updatePlayerFlags('cGroup', player, (cGroup) => {
     cGroup = removeFlag(cGroup, room.CollisionFlags.c1); // Remove c1 cGroup (other player)
@@ -676,6 +687,7 @@ function kickOff(enable = true) {
 
     if (playersInGameLength() === 1 && (CURRENT_MAP === 'PRACTICE' || !ballInPlayingArea(BLACK_BALL))) {
       moveBall(BLACK_BALL, BLACK_BALL_SPAWN);
+      BLACK_SCORED_TEAM = undefined;
     }
 
     if (CURRENT_MAP === 'PRACTICE') {
@@ -740,25 +752,6 @@ function movePlayersOutOfTurn() {
   }
 }
 
-// positions where the player can spawn for its turn
-const PLAYER_SPAWN_POSITIONS = [
-  position(0, 0), // center
-  position(-267, 0), // left
-  position(267, 0), // right
-  position(0, -89), // up
-  position(0, 89), // bottom
-  position(-267, -89), // top left
-  position(-267, 89), // top right
-  position(267, -89), // bottom left
-  position(267, 89), // bottom right
-  position(-134, 0), // center left
-  position(134, 0), // center right
-  position(-134, -89), // center left up
-  position(-134, 89), // center left down
-  position(134, -89), // center right up
-  position(134, 89), // center right down
-];
-
 function moveCurrentPlayer(always = true, kickoff = false) {
   if (!GAME_OVER && CURRENT_PLAYER) {
     const player = room.getPlayer(CURRENT_PLAYER.id);
@@ -775,38 +768,23 @@ function moveCurrentPlayer(always = true, kickoff = false) {
           pos = position(teamSpawnPoints[0]);
           posDistanceToWhite = distance(pos, whiteBallPosition);
         } else {
-          const distances = PLAYER_SPAWN_POSITIONS.map(spawn => distance(spawn, whiteBallPosition));
-          posDistanceToWhite = Math.min(...distances);
-          const minimumDistanceIndex = distances.indexOf(posDistanceToWhite);
+          const remainingBalls = getRemainingBalls(CURRENT_TEAM || player.team);
+          const targetBalls = remainingBalls.length > 0 ? remainingBalls : [BLACK_BALL];
+          const midPosition = medianPosition(targetBalls.map(getBall));
   
-          pos = position(PLAYER_SPAWN_POSITIONS[minimumDistanceIndex]); // copy for immutability
-  
-          let minimumDistance = 2*BALL_RADIUS + PLAYER_RADIUS;
-          
-          if (isAim(player)) {
-            minimumDistance += AIM_DISC_RADIUS / 2;
-          }
-  
-          // LOG.debug('pos', pos, 'posDistanceToWhite', posDistanceToWhite, 'minimumDistance', minimumDistance);
-    
-          if (posDistanceToWhite < minimumDistance) {
-            const posDistanceToWhiteX = Math.abs(pos.x - whiteBallPosition.x);
-            const posDistanceToWhiteY = Math.abs(pos.y - whiteBallPosition.y);
-  
-            const directionX = pos.x <= whiteBallPosition.x ? -1 : 1;
-            const directionY = pos.y <= whiteBallPosition.y ? -1 : 1;
-  
-            // LOG.debug('whiteBallPosition', whiteBallPosition);
-            // LOG.debug('posDistanceToWhiteX', posDistanceToWhiteX, 'posDistanceToWhiteY', posDistanceToWhiteY);
-  
-            pos.x += (minimumDistance - posDistanceToWhiteX) * directionX;
-            pos.y += (minimumDistance - posDistanceToWhiteY) * directionY;
-  
-            // LOG.debug('pos.x (+)', pos.x, 'ADD:', (minimumDistance - posDistanceToWhiteX), '*', directionX);
-            // LOG.debug('pos.y (+)', pos.y, 'ADD:', (minimumDistance - posDistanceToWhiteY), '*', directionY);
+          posDistanceToWhite = BALL_RADIUS + PLAYER_RADIUS + (isAim(player) ? AIM_DISC_RADIUS : BALL_RADIUS);
 
-            posDistanceToWhite = distance(pos, whiteBallPosition);
-          }
+          // LOG.debug('whiteBallPosition', whiteBallPosition, 'midPosition', midPosition, 'posDistanceToWhite', posDistanceToWhite);
+
+          const whiteMidVector = diff(whiteBallPosition, midPosition);
+          const whiteMidUnitVector = normalizeVector(whiteMidVector);
+
+          const offsetX = posDistanceToWhite * whiteMidUnitVector.x;
+          const offsetY = posDistanceToWhite * whiteMidUnitVector.y;
+          
+          pos = position(whiteBallPosition.x - offsetX, whiteBallPosition.y - offsetY);
+          
+          // LOG.debug('diff', whiteMidVector, 'u', whiteMidUnitVector, 'offsetX', offsetX, 'offsetY', offsetY, 'pos', pos);
         }
 
         if (always || KICKOFF || !player.position || posDistanceToWhite < distance(player.position, whiteBallPosition)) {
@@ -1033,6 +1011,10 @@ function getAuth(player) {
   return AUTH[player.id];
 }
 
+function getConnection(player) {
+  return CONN[player.id];
+}
+
 function setAuth(player) {
   const auth = player.auth;
 
@@ -1046,6 +1028,7 @@ function setAuth(player) {
   }
 
   AUTH[player.id] = auth;
+  CONN[player.id] = player.conn;
 
   checkAdmin(player);
 
@@ -1064,11 +1047,16 @@ function scheduleAuthRemoval(player) {
   }, MAX_AUTH_CACHE_MINUTES * 60 * 1000);
 
   delete AUTH[player.id];
+  delete CONN[player.id];
 }
 
 function getPlayerByAuth(auth) {
   const playerId = Object.keys(AUTH).find(playerId => AUTH[playerId] === auth);
   return getPlayers().find(player => player.id == playerId); // == as player.id is integer like 1 and playerId is string like '1'
+}
+
+function getPlayersByConnection(conn) {
+  return getPlayers().filter(player => conn === getConnection(player));
 }
 
 function mapAuthToPlayers() {

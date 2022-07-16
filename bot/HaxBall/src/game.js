@@ -120,9 +120,9 @@ function getPlayerStrength(player) {
 
 function kickBall(player) {
   const playerPosition = player.position;
-  const whiteBallPosition = getWhiteBall();
+  const whiteBall = getWhiteBall();
 
-  const euclidianDistance = distance(playerPosition, whiteBallPosition);
+  const euclidianDistance = distance(playerPosition, whiteBall);
 
   if (euclidianDistance > MAXIMUM_DISTANCE_TO_KICK) {
     return false; // avoid misskicks
@@ -132,26 +132,70 @@ function kickBall(player) {
   
   // LOG.debug('euclidianDistance', euclidianDistance, 'normalized', euclidianDistanceNormalized);
   
-  const manhattanDistanceX = whiteBallPosition.x - playerPosition.x;
-  const manhattanDistanceY = whiteBallPosition.y - playerPosition.y;
-  const maxDistanceCoords = Math.max(Math.abs(manhattanDistanceX), Math.abs(manhattanDistanceY));
+  const kickDirectionVector = diff(playerPosition, whiteBall);
+
+  const { x: manhattanDistanceX, y: manhattanDistanceY } = kickDirectionVector;
   
-  // LOG.debug('manhattanDistance', Math.abs(manhattanDistanceX) + Math.abs(manhattanDistanceY), 'X', manhattanDistanceX, 'Y', manhattanDistanceY);
+  // LOG.debug('manhattanDistance', manhattan(playerPosition, whiteBall), 'X', manhattanDistanceX, 'Y', manhattanDistanceY);
 
-  const baseKickStrength = KICKOFF ? BASE_KICKOFF_KICK_STRENGTH : BASE_KICK_STRENGTH;
-  let kickStrength = baseKickStrength * getPlayerStrength(player);
+  const playerStrength = getPlayerStrength(player);
+  const kickStrength = KICK_STRENGTH[playerStrength];
 
-  // TODO: Close balls trespassing, calculate direction with parallel vectors (also for the wall strength limit)
+  // LOG.debug('playerStrength', playerStrength, 'kickStrength', kickStrength);
 
-  if (kickStrength > 20 && euclidianDistanceNormalized < 2 && closeToTableBorder(whiteBallPosition, 2*BALL_RADIUS)) {
-    kickStrength = 20; // avoid wall trespassing (low bias)
+  let speed = kickStrength / euclidianDistanceNormalized;
+
+  // Limit speed if objects are very close (wall or other balls) so the ball do not trespass / overstep (not enough bias to block that much speed)
+  if (speed > MAX_NEAR_SPEED) {
+    // LOG.debug('playerStrength', playerStrength, 'speed (before limit)', speed, 'whiteBall', whiteBall.x, whiteBall.y);
+    
+    // Direction line centered at the whiteBall position (px, py) = (whiteBall.x, whiteBall.y) with the kick direction vector (mx, my) = (manhattanDistanceX, manhattanDistanceY)
+    const directionLine = new Line(manhattanDistanceX, manhattanDistanceY, whiteBall);
+
+    // mirrored coordinates on y axis (haxball -y is cartesian y)
+    // LOG.debug('direction line:', directionLine.mirrorCoordinates(false, true).toString());
+
+    const tableNearThreshold = 356; // ball distance to the table wall must be below this threshold
+
+    // close to any wall ?
+    const nearWall = TABLE_WALLS.find(tableWall => isTableWallCloseInRange(whiteBall, tableWall, tableNearThreshold, directionLine));
+
+    if (nearWall) {
+      speed = MAX_NEAR_SPEED;
+      LOG.debug(`Limited speed (${speed}), close to table border`, nearWall.mirrorCoordinates(false, true).toString());
+    } else {
+      const nearThreshold = 2*AIM_DISC_RADIUS; // ball distance must be below this threshold // minimum distance between two balls is 2*BALL_RADIUS
+      const borderThreshold = BALL_RADIUS; // if the ball is hit beyond this value it is considered a border collision 
+      const directionMargin = 2*BALL_RADIUS; // width of the direction line (channel of two parallel lines of white ball movement after kick), 2*BALL_RADIUS on both sides of the line
+      const targetBalls = [...REMAINING_RED_BALLS, ...REMAINING_BLUE_BALLS, BLACK_BALL];
+
+      // close to any ball ?
+      const nearBall = targetBalls.find(ballIndex => isBallCloseInRange(whiteBall, ballIndex, nearThreshold, borderThreshold, directionMargin, directionLine));
+
+      if (nearBall !== undefined) {
+        let limitReason;
+        
+        const distanceWhiteToTarget = distance(whiteBall, getBall(nearBall));
+
+        speed = MAX_NEAR_SPEED;
+
+        if (distanceWhiteToTarget <= nearThreshold) {
+          limitReason = 'near';
+        } else {
+          limitReason = 'potential border collision';
+        }
+
+        LOG.debug(`Limited speed (${speed}),`, limitReason, getBallIcon(nearBall), `(${nearBall})`);
+      }
+    }
   }
 
-  const speed = (1 / euclidianDistanceNormalized) * kickStrength;
-  const speedX = speed * (manhattanDistanceX / maxDistanceCoords);
-  const speedY = speed * (manhattanDistanceY / maxDistanceCoords);
+  const kickDirectionUnitVector = normalizeVector(kickDirectionVector);
 
-  // LOG.debug('speed', speed, 'X', speedX, 'Y', speedY);
+  const speedX = speed * kickDirectionUnitVector.x;
+  const speedY = speed * kickDirectionUnitVector.y;
+
+  LOG.debug('speed', speed, 'speedX', speedX, 'speedY', speedY, 'speedNorm', Math.hypot(speedX, speedY));
 
   room.setDiscProperties(WHITE_BALL, {
     xspeed: speedX,
@@ -159,6 +203,90 @@ function kickBall(player) {
   });
 
   return true;
+}
+
+// Check if the table wall is close and in range to the white ball direction line
+function isTableWallCloseInRange(whiteBall, tableWall, tableNearThreshold, directionLine) {
+  // 1. Calculate the intersection point between the direction line and the table wall
+  const intersection = tableWall.intersect(directionLine);
+
+  if (!intersection) {
+    return false; // no intersection
+  }
+
+  // 2. Check if the distance between the white ball and the intersection point is less than tableNearThreshold
+  const distanceWhiteToIntersection = distance(whiteBall, intersection);
+
+  // LOG.debug('wall intersection', intersection, 'distanceWhiteToIntersection', distanceWhiteToIntersection);
+
+  if (distanceWhiteToIntersection <= tableNearThreshold) {
+    // 3. Check if the white ball goes towards this wall
+    
+    // LOG.debug('player -> white ball', directionLine.mx, directionLine.my);
+
+    // To be in range, the player must be pointing to this wall
+    if (tableWall.isVertical()) {
+      return Math.sign(tableWall.center.x) === Math.sign(directionLine.mx);
+    } else if (tableWall.isHorizontal()) {
+      return Math.sign(tableWall.center.y) === Math.sign(directionLine.my);
+    } else {
+      const { x, y } = diff(whiteBall, intersection);
+      return Math.sign(x) === Math.sign(directionLine.mx) && Math.sign(y) === Math.sign(directionLine.my);
+    }
+  }
+
+  return false; // wall is far away or not in the range of the kick direction
+}
+
+// Check if the target ball is close and in range to the white ball direction line
+function isBallCloseInRange(whiteBall, targetBallIndex, nearThreshold, borderThreshold, directionMargin, directionLine) {
+  const targetBall = getBall(targetBallIndex);
+
+  // 1. Calculate the perpendicular line to the direction line that passes through the target ball
+  // Perpendicular to the direction line, centered at the target ball position (px, py) = (targetBall.x, targetBall.y) with the direction vector (-my, mx)
+  const perpendicular = directionLine.perpendicular(targetBall);
+
+  // LOG.debug(getBallIcon(targetBallIndex), `(${targetBallIndex})`, targetBall.x, targetBall.y);
+  // LOG.debug('perpendicular line:', perpendicular.mirrorCoordinates(false, true).toString());
+
+  // 2. Calculate the intersection point between both lines
+  const intersection = directionLine.intersect(perpendicular);
+
+  if (!intersection) {
+    return false; // no intersection
+  }
+
+  // 3. Check if the distance between the target ball and the intersection point is less than directionMargin (target ball is in the range of the direction line)
+  const distanceTargetToIntersection = distance(targetBall, intersection);
+
+  // LOG.debug('intersection', intersection, 'distanceTargetToIntersection', distanceTargetToIntersection);
+
+  if (distanceTargetToIntersection <= directionMargin) {
+    // 4. Check if the white ball is going to hit the target ball diagonally in the border (borderThreshold), only if is not a kickoff shot
+    let distanceWhiteToIntersection;
+    
+    if (!KICKOFF && distanceTargetToIntersection > borderThreshold) {
+      nearThreshold = null; // ignore near check
+      // LOG.debug('potential border collision');
+    } else {
+      // 4.2. Otherwise, check if the distance between the white ball and the intersection point is less than nearThreshold (white ball is close to the target ball)
+      distanceWhiteToIntersection = distance(whiteBall, intersection);
+      // LOG.debug('distanceWhiteToIntersection', distanceWhiteToIntersection);
+    }
+
+    if (!nearThreshold || distanceWhiteToIntersection <= nearThreshold) {
+      // 5. Check if the vector between the white ball and the intersection point have the same sense than the vector of the direction line (target ball is in front of the white ball)
+      const { x, y } = diff(whiteBall, intersection);
+
+      // LOG.debug('player -> white ball', directionLine.mx, directionLine.my);
+      // LOG.debug('white ball -> target ball intersection', x, y);
+  
+      // To be in range, it must have the same sense than the direction vector, so [player -> white ball] must have the same sense than [white ball -> target ball intersection]
+      return Math.sign(x) === Math.sign(directionLine.mx) && Math.sign(y) === Math.sign(directionLine.my);
+    }
+  }
+
+  return false; // ball is far away or not in the range of the kick direction
 }
 
 let SECOND_TICKS = 0; // ticks elapsed in the current second
@@ -209,7 +337,7 @@ function foul(message, { nextTurn = true, changeTeam = true, delay = false, over
   if (!multipleFoul || override || lose) {
     FOUL = true;
     
-    warn(`❌  FOUL ${message}`, null, lose ? 'bold' : 'normal', lose ? 2 : 1, COLOR.WARNING, lose ? LOG.info : LOG.debug);
+    warn(`❌  FOUL ${message}`, null, lose ? NOTIFY : 1, lose ? 'bold' : 'normal', COLOR.WARNING, lose ? LOG.info : LOG.debug);
 
     if (!multipleFoul) {
       incrementStatistics(player, 'fouls');
@@ -464,7 +592,7 @@ function notifyUpdateGameStatistics(data) {
     .filter(([_player, gameStats]) => !!gameStats)
     .sort(([_p1, stats1], [_p2, stats2]) => -(stats1.score - stats2.score)) // descending
     .forEach(([player, gameStats]) => {
-      info(`${player.name} ${gameStats.score >= 0 ? "+" : ""}${gameStats.score} 🏵`, null, getColor(gameStats.score)); // TODO: 🔰 ELO
+      info(`${player.name} ${gameStats.score >= 0 ? '+' : ''}${gameStats.score} 🏵`, null, getColor(gameStats.score)); // TODO: 🔰 ELO
     });
 }
 
@@ -586,7 +714,7 @@ function checkBlackBall() {
 
       info("🎱  Scored black", null, color);
 
-      if ((practice && CURRENT_MAP === 'PRACTICE') || (remainingBalls && activePlayers().length === 1)) {
+      if ((practice && CURRENT_MAP === 'PRACTICE') || (remainingBalls && playersInGameLength() === 1)) {
         kickOff();
       } else {
         stackColorBall(CURRENT_TEAM, BLACK_BALL);
@@ -726,7 +854,7 @@ function checkFirstBallTouched() {
   FIRST_BALL_TOUCHED = typeof teamBallMoving === 'number' ? teamBallMoving : null;
 
   if (FIRST_BALL_TOUCHED !== null) {
-    LOG.debug('First ball touched', FIRST_BALL_TOUCHED);
+    LOG.debug('First ball touched', getBallIcon(FIRST_BALL_TOUCHED), `(${FIRST_BALL_TOUCHED})`);
 
     if (USING_RULES.FOUL_WRONG_FIRST_BALL && !isFirstKickOff()) {
       if (getBallTeam(FIRST_BALL_TOUCHED) !== CURRENT_TEAM) {

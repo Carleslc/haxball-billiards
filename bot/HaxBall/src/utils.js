@@ -1,5 +1,371 @@
 /* JavaScript utils (non-HaxBall specific) */
 
+// Math
+
+// Coordinate distances between two points
+// Is equivalent to the vector (b.x, b.y) - (a.x, a.y)
+function diff(a, b) {
+  return {
+    x: b.x - a.x,
+    y: b.y - a.y
+  };
+}
+
+// Euclidian distance between two points
+function distance(a, b) { 
+  const { x, y } = diff(a, b);
+  return Math.hypot(x, y); // Math.sqrt((b.x - a.x)**2 + (b.y - a.y)**2)
+}
+
+// Manhattan distance between two points
+function manhattan(a, b) {
+  const { x, y } = diff(a, b);
+  return Math.abs(x) + Math.abs(y);
+}
+
+// Normalize a vector to its unit vector (length 1)
+// v = diff(a, b)
+function normalizeVector(v) {
+  const norm = Math.hypot(v.x, v.y);
+  return {
+    x: v.x / norm,
+    y: v.y / norm
+  };
+}
+
+/** Normalize x with values [minX, maxX] to [a, b] */
+function normalizeDistance(x, minX, a, maxX, b) {
+  return a + (((x - minX) * (b - a)) / (maxX - minX));
+}
+
+function fixNan(n, replacement = '-') {
+  return isNaN(n) ? replacement : n;
+}
+
+function roundDecimals(n, decimals = 0) {
+  const power10 = 10 ** decimals;
+  return Math.round(n * power10) / power10;
+}
+
+function rate(calc, { scale = 100, decimals = 0, defaultValue = 0 } = {}) {
+  calc = fixNan(calc, defaultValue);
+  return String(roundDecimals(calc * scale, decimals)) + (scale === 100 ? '%' : '');
+}
+
+function gcd(a, b, tolerance = 1e-15) {
+  // Limited precision
+  return (b < tolerance) ? Math.abs(a) : gcd(b, a%b);
+}
+
+function reduceFraction(numerator, denominator, precision = 15) {
+  numeratorSign = Math.sign(numerator);
+  denominatorSign = Math.sign(denominator);
+  numerator = Math.trunc(Math.abs(numerator));
+  denominator = Math.trunc(Math.abs(denominator));
+  const g = gcd(numerator, denominator || 1, 10 ** (-precision));
+  return [numeratorSign * Math.round(numerator/g), (denominatorSign * Math.round(denominator/g)) || 1];
+}
+
+function toFraction(n, precision = 15) {
+  if (!Number.isFinite(n)) {
+    return [n, 1];
+  }
+  n = roundDecimals(n, precision);
+  const integral = n - Math.trunc(n);
+  const power10 = 10 ** (integral ? (String(integral).length - 2) : 0);
+  return reduceFraction(n * power10, power10, precision);
+}
+
+class Line {
+
+  // Line with the vector (mx, my) that passes through a center point
+  // y = (my / mx) * (x - center.x) + center.y
+  constructor(mx, my, center = [0, 0]) {
+    this.mx = mx;
+    this.my = my;
+    this.centerAt(center);
+  }
+
+  // Line from the general equation: a*x + b*y + c = 0
+  static fromGeneral(a, b, c) {
+    // Ax + By + C = 0  =>  -By = Ax + C  =>  y = (A / -B) * x + (C / -B)
+    return new Line(-b, a, [0, -c/b]);
+  }
+
+  // Line with the slope m with intercept b on the y axis (origin)
+  // y = m*x + b
+  static fromSlope(m, b = 0) {
+    if (!Number.isFinite(m)) {
+      return Line.vertical(b);
+    }
+    const mFraction = toFraction(m);
+    return new Line(mFraction[1], mFraction[0], [0, b]);
+  }
+
+  // Vertical line
+  static vertical(x) {
+    return new Line(0, 1, [x, 0]);
+  }
+
+  // Horizontal line
+  static horizontal(y) {
+    return new Line(1, 0, [0, y]);
+  }
+
+  // (x - center.x) / mx = (y - center.y) / my
+  // my*x - my*center.x = mx*y - mx*center.y
+  // y*mx = my*x - my*center.x + mx*center.y
+  // y = (my / mx) * x - (my / mx) * center.x + center.y
+  centerAt(center = [0, 0]) {
+    this.center = position(center);
+
+    if (this.isVertical()) {
+      this.b = this.center.x === 0 ? this.center.y : undefined;
+    } else {
+      this.b = this.center.y - this.slope() * this.center.x;
+    }
+  }
+
+  slope() {
+    return this.my / this.mx;
+  }
+
+  isVertical() { // x = center.x
+    return this.mx === 0;
+  }
+
+  isHorizontal() { // y = center.y
+    return this.my === 0;
+  }
+
+  // Perpendicular line to this line that passes through a point
+  perpendicular(point = null) {
+    // y = m*x + b  =>  point.y = (this.mx / -this.my) * point.x + b
+    // b = point.y - (this.mx / -this.my) * point.x
+    return new Line(-this.my, this.mx, point || this.center);
+  }
+
+  // Calculate the intersection point between this line and another line
+  intersect(line) {
+    // y = m*x + b,  y = m'*x + b'  =>  m*x + b = m'*x + b'  =>  x*(m - m') = b' - b
+    // x = (b' - b) / (m - m')  =>  x = (b' - b) / ((my / mx) - (my' / mx'))
+    // x = (line.b - this.b) / (this.slope() - line.slope())
+    if (line instanceof Line) {
+      let x, y;
+      if (this.equals(line)) {
+        x = this.center.x;
+        y = this.center.y;
+      } else if (this.isVertical()) {
+        ({ x, y } = this.#intersectVertical(line));
+      } else if (line.isVertical()) {
+        ({ x, y } = line.#intersectVertical(this));
+      } else {
+        // y = m*x + b,  y = m'*x + b'  =>  m*x + b = m'*x + b'  =>  x*(m - m') = b' - b
+        // x = (b' - b) / (m - m')  =>  x = (b' - b) / ((my / mx) - (my' / mx'))
+        // x = (line.b - this.b) / (this.slope() - line.slope())
+        const m = this.slope();
+        const lm = line.slope();
+        const mDiff = m - lm;
+        if (mDiff === 0) {
+          return null; // no intersection
+        }
+        x = (line.b - this.b) / mDiff;
+        // y = (my / mx) * x + b
+        y = m * x + this.b;
+      }
+      return position(x, y);
+    }
+    return undefined;
+  }
+
+  #intersectVertical(line) {
+    // x = center.x,  y = m'*x + b'
+    let x, y;
+
+    x = this.center.x;
+        
+    if (line.isVertical()) {
+      if (line.center.x === x) {
+        y = line.center.y;
+      } else {
+        return null; // no intersection
+      }
+    } else {
+      // y = (line.my / line.mx)*(this.center.x) + line.b
+      y = line.slope() * x + line.b;
+    }
+
+    return { x, y };
+  }
+
+  // Euclidian distance between a point and this line
+  distanceToPoint(point) {
+    if (this.isVertical()) {
+      return Math.abs(this.center.x - point.x);
+    }
+    const m = this.slope();
+    return Math.abs(m * point.x - point.y + this.b) / Math.sqrt(m*m + 1);
+  }
+
+  mirrorCoordinates(mirrorX, mirrorY) {
+    let mx = mirrorX ? -this.mx : this.mx;
+    let my = mirrorY ? -this.my : this.my;
+    let centerX = mirrorX ? -this.center.x : this.center.x;
+    let centerY = mirrorY ? -this.center.y : this.center.y;
+    return new Line(mx, my, [centerX, centerY]);
+  }
+
+  copy() {
+    return this.mirrorCoordinates(false, false);
+  }
+
+  equals(line) {
+    return this.mx === line.mx && this.my === line.my && this.center.equals(line.center);
+  }
+
+  // Input for https://www.wolframalpha.com/
+  toString(range = [[-400, 400], [-300, 300]]) {
+    let line;
+    if (this.isHorizontal()) {
+      // line (horizontal): y = center.y
+      line = `y = ${this.center.y}`;
+    } else if (this.isVertical()) {
+      // line (vertical): x = center.x
+      line = `x = ${this.center.x}`;
+    } else {
+      // line: y = m * x + b
+      line = 'y = ';
+      const m = this.slope();
+      if (m) {
+        line += `${m} * x`;
+      }
+      if (this.b) {
+        line += ` ${this.b > 0 ? '+' : '-'} ${Math.abs(this.b)}`;
+      }
+    }
+    if (range) {
+      line += `, x from ${range[0][0]} to ${range[0][1]}, y from ${range[1][0]} to ${range[1][1]}`;
+    }
+    return line;
+  }
+}
+
+class Position {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+  }
+  equals(p) {
+    return this.x === p.x && this.y === p.y;
+  }
+  closeTo(p, threshold = 5) {
+    return p && distance(this, p) <= threshold;
+  }
+  toString() {
+    return `{${this.x}, ${this.y}}`;
+  }
+  static compareX(p1, p2) {
+    return p1.x - p2.x;
+  }
+  static compareY(p1, p2) {
+    return p1.y - p2.y;
+  }
+}
+
+function position(x, y) {
+  if (typeof x === 'object') {
+    if (x instanceof Array) {
+      return new Position(x[0], x[1]);
+    }
+    return new Position(x.x, x.y);
+  }
+  if (typeof x === 'number' && typeof y === 'number') {
+    return new Position(x, y);
+  }
+  return new Position(0, 0);
+}
+
+function medianPosition(positions) {
+  const sortedX = [];
+  const sortedY = [];
+  
+  positions.forEach((pos) => {
+    insertSorted(sortedX, pos.x);
+    insertSorted(sortedY, pos.y);
+  });
+
+  return position(median(sortedX), median(sortedY));
+}
+
+// Collections
+
+function choice(items) {
+  return items[Math.floor(Math.random() * items.length)];
+}
+
+function median(sorted) {
+  if (sorted.length === 0) {
+    return null;
+  }
+  const mid = Math.floor(sorted.length / 2);
+
+  if (sorted.length % 2 !== 0) {
+    return sorted[mid];
+  }
+  return (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+function insertSorted(array, x, compare = (p1, p2) => (p1 - p2), from = 0, to = undefined) {
+  from = Math.max(0, from);
+  to = to !== undefined ? Math.min(to, array.length) : array.length;
+
+  if (from >= to) {
+    array.splice(to, 0, x);
+    return array;
+  }
+
+  const mid = Math.floor((to + from) / 2);
+
+  const comp = compare(array[mid], x);
+
+  if (comp > 0) {
+    return insertSorted(array, x, compare, from, mid);
+  } else if (comp < 0) {
+    return insertSorted(array, x, compare, mid + 1, to);
+  }
+
+  // comp === 0
+  let i = mid + 1;
+  while (i < to && compare(array[i], x) === 0) {
+    i++;
+  }
+  return insertSorted(array, x, compare, i, i);
+}
+
+function findAllIndexes(array, condition) {
+  const indexes = [];
+
+  array.forEach((e, i) => {
+    if (condition(e)) {
+      indexes.push(i);
+    }
+  });
+
+  return indexes;
+}
+
+function filter(set, condition) {
+  const items = [];
+  
+  set.forEach((e) => {
+    if (condition(e)) {
+      items.push(e);
+    }
+  });
+
+  return items;
+}
+
 // Strings
 
 const WORD_SPLIT_REGEX = /\s+/;
@@ -28,48 +394,6 @@ function normalizeCharacters(s, digitsToChar = false) {
   }
 
   return s;
-}
-
-// Math
-
-function fixNan(n, replacement = '-') {
-  return isNaN(n) ? replacement : n;
-}
-
-function rate(calc, { scale = 100, decimals = 0, defaultValue = 0 } = {}) {
-  calc = fixNan(calc, defaultValue);
-  const power10 = +('1'.padEnd(decimals + 1, '0'));
-  return String(Math.round(calc * scale * power10) / power10) + (scale === 100 ? '%' : '');
-}
-
-// Collections
-
-function choice(items) {
-  return items[Math.floor(Math.random() * items.length)];
-}
-
-function findAllIndexes(array, condition) {
-  const indexes = [];
-
-  array.forEach((e, i) => {
-    if (condition(e)) {
-      indexes.push(i);
-    }
-  });
-
-  return indexes;
-}
-
-function filter(set, condition) {
-  const items = [];
-  
-  set.forEach((e) => {
-    if (condition(e)) {
-      items.push(e);
-    }
-  });
-
-  return items;
 }
 
 // Date & Time
@@ -102,45 +426,6 @@ function getDuration(seconds, includeSeconds = false) {
   }
 
   return durationString.trim();
-}
-
-// Distance
-
-function distance(a, b) {
-  return Math.hypot((b.x - a.x), (b.y - a.y)); // Math.sqrt((b.x - a.x)**2 + (b.y - a.y)**2)
-}
-
-/** Normalize x with values [minX, maxX] to [a, b] */
-function normalizeDistance(x, minX, a, maxX, b) {
-  return a + (((x - minX) * (b - a)) / (maxX - minX));
-}
-
-// Position
-
-class Position {
-  constructor(x, y) {
-    this.x = x;
-    this.y = y;
-  }
-  equals(p) {
-    return this.x === p.x && this.y === p.y;
-  }
-  closeTo(p, threshold = 5) {
-    return p && Math.abs(this.x - p.x) <= threshold && Math.abs(this.y - p.y) <= threshold;
-  }
-}
-
-function position(x, y) {
-  if (typeof x === 'object') {
-    if (x instanceof Array) {
-      return new Position(x[0], x[1]);
-    }
-    return new Position(x.x, x.y);
-  }
-  if (typeof x === 'number' && typeof y === 'number') {
-    return new Position(x, y);
-  }
-  return new Position(0, 0);
 }
 
 // Events
@@ -292,6 +577,9 @@ class Logger {
     }
     
     console.debug = value > LOG_LEVEL.DEBUG ? NO_LOG : CONSOLE_LOG.DEBUG;
+  }
+  canLog(level) {
+    return (level || this.level) <= this.level;
   }
   info(...msg) {
     console.info(...msg);

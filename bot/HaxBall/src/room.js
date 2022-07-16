@@ -73,7 +73,14 @@ function updateIsPlaying() {
 function updatePlayersLength() {
   N_PLAYERS_BEFORE = N_PLAYERS;
   N_PLAYERS = getPlayers().length;
+  logPlayers();
   updateTeams();
+}
+
+function logPlayers() {
+  if (N_PLAYERS !== N_PLAYERS_BEFORE) {
+    LOG.debug(`${N_PLAYERS_BEFORE} -> ${N_PLAYERS} players in the room (Playing: ${PLAYING})`);
+  }
 }
 
 function updateTeams(teams) {

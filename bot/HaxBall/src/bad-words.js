@@ -453,6 +453,7 @@ const BAD_WORDS = (() => {
     "testicles",
     "titt",
     "twat",
+    "trash",
     "vittu",
     "wank",
     "wetback",

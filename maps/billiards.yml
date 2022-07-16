@@ -50,7 +50,7 @@ variables:
     kickOffLine-mask: [c2]
     kickOffLine-color: 085849
     tableWall-bCoef: 0.5
-    tableWall-bias: -20
+    tableWall-bias: -40
     tableWall-color: '163433'
     tableWallCorner-bCoef: 0.45
     tableBorder-bias: 40
