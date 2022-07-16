@@ -333,7 +333,7 @@ function getWhiteBallPosition() {
 function setWhiteBall(player) {
   const playerWhiteBall = whiteBall(player);
 
-  if (playerWhiteBall !== WHITE_BALL) {
+  if (playerWhiteBall !== WHITE_BALL && BOT_MAP) {
     // move to playing area
     room.setDiscProperties(playerWhiteBall, room.getDiscProperties(WHITE_BALL));
     

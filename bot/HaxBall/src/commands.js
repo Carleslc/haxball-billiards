@@ -823,7 +823,7 @@ function listPlayers(player) {
 
   let playersList = `🕵️ Players ${players.length} / ${MAX_PLAYERS}\n\n`;
 
-  playersList += players.map(p => p.name + (isAFK(p) ? ' 😴' : '')).join('\n');
+  playersList += players.map(p => p.name + (isAFK(p) ? ' 😴 (AFK)' : '')).join('\n');
 
   const sharedConnections = {};
 
@@ -1031,6 +1031,7 @@ const COMMAND_HANDLERS = {
   'drink': menu,
   'menu': menu,
   'players': listPlayers,
+  'afks': listPlayers,
   'teams': adminOnly(teams),
   'kick': adminOnly(kick),
   'ban': adminOnly(ban),

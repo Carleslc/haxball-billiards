@@ -195,7 +195,7 @@ function kickBall(player) {
   const speedX = speed * kickDirectionUnitVector.x;
   const speedY = speed * kickDirectionUnitVector.y;
 
-  LOG.debug('speed', speed, 'speedX', speedX, 'speedY', speedY, 'speedNorm', Math.hypot(speedX, speedY));
+  // LOG.debug('speed', speed, 'speedX', speedX, 'speedY', speedY);
 
   room.setDiscProperties(WHITE_BALL, {
     xspeed: speedX,
