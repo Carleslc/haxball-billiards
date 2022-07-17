@@ -2,6 +2,8 @@
 
 [![Buildable](https://assets.buildable.dev/buildable-logos/powered-by-buildable.svg)](https://buildable.dev)
 
+[![ko-fi](https://www.ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/carleslc)
+
 Backend is created and hosted with the [Buildable](https://www.buildable.dev/) service.
 
 Database is a NoSQL Database hosted in [Mongo Atlas](https://www.mongodb.com/atlas/database).

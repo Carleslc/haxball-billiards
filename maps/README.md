@@ -1,5 +1,7 @@
 # Maps
 
+[![ko-fi](https://www.ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/carleslc)
+
 [`stadiums`](./stadiums/)
 
 - [**Billiards.hbs**](./stadiums/Billiards.hbs)

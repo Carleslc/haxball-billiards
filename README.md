@@ -1,5 +1,7 @@
 # HaxBall Billiards
 
+[![ko-fi](https://www.ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/carleslc)
+
 [HaxBall](https://www.haxball.com/play)
 
 ### **[HaxBilliards Discord](https://discord.gg/z6pH3hEWsf)**
