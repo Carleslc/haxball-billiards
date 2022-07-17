@@ -87,7 +87,7 @@ module.exports = function(grunt) {
 
   // Load plugins
   grunt.loadNpmTasks('grunt-contrib-concat'); // https://github.com/gruntjs/grunt-contrib-concat
-  grunt.loadNpmTasks("grunt-string-replace"); // https://github.com/eruizdechavez/grunt-string-replace
+  grunt.loadNpmTasks('grunt-string-replace'); // https://github.com/eruizdechavez/grunt-string-replace
   grunt.loadNpmTasks('grunt-contrib-uglify-es'); // https://github.com/gruntjs/grunt-contrib-uglify/tree/harmony
   grunt.loadNpmTasks('grunt-contrib-clean'); // https://github.com/gruntjs/grunt-contrib-clean
   grunt.loadNpmTasks('grunt-shell'); // https://github.com/sindresorhus/grunt-shell

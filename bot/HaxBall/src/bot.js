@@ -701,7 +701,7 @@ function kickOff(enable = true) {
 }
 
 function moveHostPlayer(host) {
-  if (host && host.team !== TEAM.SPECTATOR) {
+  if (PLAYING && host && host.team !== TEAM.SPECTATOR) {
     // Move host out of the table
     room.setPlayerDiscProperties(host.id, HOST_POSITION[host.team]);
   }
@@ -1236,10 +1236,10 @@ function onPlayerTeamChange(player, byPlayer) {
 
   checkChangingTeamsCallback(player);
 
-  if (player.team === TEAM.SPECTATOR) {
-    updateOnTeamMove(player, false);
-  } else if (isHostPlayer(player)) {
+  if (isHostPlayer(player)) {
     moveHostPlayer(player);
+  } else if (player.team === TEAM.SPECTATOR) {
+    updateOnTeamMove(player, false);
   } else if (PLAYING) {
     resetAFK(player);
     updateOnTeamMove(player);
@@ -1351,6 +1351,8 @@ function onStadiumChange(map) {
   if (BOT_MAP) {
     loadMapProperties();
   } else {
-    resetCurrentPlayer()
+    CURRENT_MAP = undefined;
+    CURRENT_MAP_OBJECT = undefined;
+    resetCurrentPlayer();
   }
 }
