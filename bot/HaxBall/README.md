@@ -75,7 +75,7 @@ The room will be open as long as you have the node process running.
 You can stop it with _Ctrl^C_.
 
 You can run it in detach mode with `./start.sh prod TOKEN &` or `. .env && ./start.sh &`.
-You can stop it looking for the `PID` of the `node ./src/room.js` process using `ps` and then using `kill PID`.
+You can stop it looking for the `PID` of the `node ./output/haxball-billiards.min.js` process using `ps` and then using `kill PID`.
 
 #### Docker
 
