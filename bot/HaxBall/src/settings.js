@@ -1,13 +1,10 @@
 /* Settings */
 
-const TOKEN = ''; // https://www.haxball.com/headlesstoken
-
-const VERSION = 'αlphα';
+const VERSION = 'ßETA';
 
 const DISCORD = 'discord.gg/z6pH3hEWsf';
 
 const ROOM = "🎱  ⚪️⩴ ⚜️ Billiards Pub ⚜️ 🔴🔵 𓀙      " + DISCORD;
-// ßETA: hosting + API + !top {STAT = ELO,score}
 // RELEASE: 1 week of server hosting without errors
 // FUTURE: Discord bot (game stats + replays, account linking, !stats)
 
@@ -27,8 +24,8 @@ const SCORE_LIMIT = 8; // goals to win the game, 0 for infinite
 const TIME_LIMIT = 0; // max minutes per game, 0 for infinite
 const TEAMS_LOCK = true; // block players from joining teams manually?
 
-const LOG_LEVEL_PRODUCTION = 'DEBUG'; // DEBUG, INFO, WARN, ERROR
-const ENABLE_CHAT_LOG = true; // LOG_LEVEL.DEBUG
+const LOG_LEVEL_PRODUCTION = 'INFO'; // DEBUG, INFO, WARN, ERROR
+const ENABLE_CHAT_LOG = !PRODUCTION; // LOG_LEVEL.DEBUG
 
 let TEAM_LIMIT = 3; // maximum players per team in a game by default
 
@@ -227,4 +224,10 @@ const HTTPS_DISCORD = 'https://' + DISCORD;
 
 const DISCORD_STATS = 'https://discord.gg/TGkmuwtYve';
 
-const API_SECRET = "$API_SECRET"; // set in .env, do not modify this constant
+const API_SECRET = '$API_SECRET'; // $API_SECRET set in .env, do not modify this constant
+
+const BUILD = '$BUILD'; // $BUILD set with grunt task (node / headless), do not modify this constant
+
+function getToken() {
+  return BUILD === 'node' ? process.env.TOKEN : '$TOKEN'; // $TOKEN set in .env for headless build
+}

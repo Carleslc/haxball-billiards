@@ -10,6 +10,9 @@
     "url": "https://github.com/Carleslc/haxball-billiards.git"
   },
 
+  "dependencies": {
+    "haxball.js": "^2.0.2"
+  },
   "devDependencies": {
     "dotenv": "^16.0.1",
     "grunt": "^1.5.3",

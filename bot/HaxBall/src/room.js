@@ -10,21 +10,29 @@ let N_PLAYERS, N_PLAYERS_BEFORE; // number of players in the room
 
 let TEAMS; // team id to team player list
 
-function init() {
-  const loaded = typeof HBInit !== 'undefined';
+async function init() {
+  const loaded = BUILD === 'node' || typeof HBInit !== 'undefined';
 
   if (loaded) {
     if (room === undefined) {
-      room = HBInit({
+      const TOKEN = checkToken();
+
+      const HBInit = await getHBInit();
+
+      room = await HBInit({
+        token: TOKEN,
         roomName: ROOM,
         maxPlayers: MAX_PLAYERS,
         noPlayer: !HOST_PLAYER,
         playerName: HOST_PLAYER,
         public: PUBLIC_ROOM,
         password: PASSWORD,
-        token: TOKEN,
-        geo: GEOCODE
+        geo: GEOCODE,
       });
+
+      LOG.info('🧩', BUILD, '$ENV');
+
+      LOG.info(PUBLIC_ROOM ? '👁  Visible' : '🚪 Hidden');
 
       scheduleDiscordReminder();
     }
@@ -48,13 +56,32 @@ function init() {
     setHostRandomAvatar();
   
     updateTeams();
-  
-    LOG.info('✅ Room loaded');
   } else {
     window.onHBLoaded = init;
   }
 
   return room;
+}
+
+async function getHBInit() {
+  return new Promise((resolve, reject) => {
+    if (BUILD === 'node') {
+      const HaxballJS = require('haxball.js');
+      HaxballJS.then(HBInit => resolve(HBInit)).catch(reject);
+    } else {
+      resolve(HBInit);
+    }
+  });
+}
+
+function checkToken() {
+  const token = getToken();
+
+  if (!token) {
+    throw new Error("Missing TOKEN environment variable\nhttps://www.haxball.com/headlesstoken");
+  }
+
+  return token;
 }
 
 function onRoomLink(url) {
@@ -66,7 +93,6 @@ function onRoomLink(url) {
 
   LOG.info('👉', URL, passwordInfo());
 }
-
 
 function isPlaying() {
   return !!room.getScores();
@@ -129,45 +155,33 @@ function stopGame() {
   }
 }
 
-function setRoomHandlers() {
-  const handlers = [
-    'onPlayerJoin',
-    'onPlayerLeave',
-    'onTeamVictory',
-    'onPlayerChat',
-    'onPlayerBallKick',
-    'onTeamGoal',
-    'onGameStart',
-    'onGameStop',
-    'onPlayerAdminChange',
-    'onPlayerTeamChange',
-    'onPlayerKicked',
-    'onGameTick',
-    'onGamePause',
-    'onPositionReset',
-    'onPositionReset',
-    'onPlayerActivity',
-    'onStadiumChange',
-    'onRoomLink',
-    'onKickRateLimitSet',
-  ];
+/* Room Handlers */
 
-  for (const handler of handlers) {
-    if (typeof this[handler] === 'function') {
-      room[handler] = (...args) => {
-        try {
-          return this[handler](...args);
-        } catch (e) {
-          LOG.error(e);
-        }
-      };
-    }
+const ROOM_HANDLERS = {
+  onRoomLink,
+  onGameStart,
+  onGameStop,
+  onPlayerActivity,
+  onPlayerJoin,
+  onPlayerLeave,
+  onPlayerTeamChange,
+  onStadiumChange,
+  onGameTick,
+  onPlayerBallKick,
+  onPlayerChat,
+};
+
+function setRoomHandlers() {
+  for (const handler of Object.keys(ROOM_HANDLERS)) {
+    room[handler] = (...args) => {
+      try {
+        return ROOM_HANDLERS[handler](...args);
+      } catch (e) {
+        LOG.error(e);
+      }
+    };
   }
 }
 
 // Start room
-try {
-  init();
-} catch (e) {
-  LOG.error(e);
-}
+init().then((_) => LOG.info('✅ Room loaded')).catch(LOG.error);

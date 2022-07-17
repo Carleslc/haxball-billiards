@@ -10,9 +10,14 @@
 
 #### **[`grunt`](https://gruntjs.com/)**
 
-```
+```sh
+# Install dependencies
 npm install -g grunt-cli
 npm install
+
+# Set executable permissions to the start script
+# This is for node only, if you will use headless host this is not needed
+chmod +x start.sh
 ```
 
 ### Build
@@ -47,14 +52,110 @@ Delete `output` folder.
 
 #### Headless Host
 
-1. Open the [Headless Host](https://html5.haxball.com/headless).
-2. Cmd+Options+J (Open DevTools Console)
-3. Copy & Paste `output/haxball-billiards.dev.js` or `output/haxball-billiards.min.js`
-4. Solve reCaptcha
-5. Join the room with the link provided
-6. Your room will be open as long as you have the Headless Host tab opened
+If you have a [`TOKEN`](https://www.haxball.com/headlesstoken) copy the file `.env.template` and rename it to `.env` then set your `TOKEN` there.
 
-### Backend API
+1. Build with `grunt dev`
+2. Open the [Headless Host](https://html5.haxball.com/headless)
+3. Cmd+Option+J (Open DevTools Console)
+4. Copy & Paste `output/haxball-billiards.dev.js`
+5. Solve reCaptcha if needed
+6. Join the room with the link provided
+
+Your room will be open as long as you have the Headless Host tab opened.
+
+#### Node
+
+1. Get your token at https://www.haxball.com/headlesstoken
+2. Run `./start.sh prod TOKEN` replacing `TOKEN` with your token
+   - Alternative (bash): `. .env && ./start.sh` if you have your `TOKEN` in the `.env` file
+   - Alternative (fish): [`envsource`](https://gist.github.com/nikoheikkila/dd4357a178c8679411566ba2ca280fcc)` .env && ./start.sh`
+3. Join the room with the link provided
+
+The room will be open as long as you have the node process running.
+You can stop it with _Ctrl^C_.
+
+You can run it in detach mode with `./start.sh prod TOKEN &` or `. .env && ./start.sh &`.
+You can stop it looking for the `PID` of the `node ./src/room.js` process using `ps` and then using `kill PID`.
+
+#### Docker
+
+Optionally, you can run this room as a [Docker](https://www.docker.com/) image.
+
+##### **Build image**
+
+This is needed only the first time or to update the source files if they change.
+
+```sh
+# Create the Docker image
+# --build-arg binds the Dockerfile args (use TASK=dev for a testing environment)
+# -t is the image name
+# last parameter is the location of the Dockerfile (.)
+docker build --build-arg ROOM=haxball-billiards --build-arg TASK=prod -t haxball-billiards .
+```
+
+##### **Run the container**
+
+This will create and start the container, opening the room.
+
+Replace `$TOKEN` with your HaxBall token from https://www.haxball.com/headlesstoken
+
+```sh
+# Run a docker container with the generated image
+# -d is detached (parallel process)
+# --name is the container name
+# --env-file reads the .env file and passes the TOKEN as an environment variable
+# last parameter is the image name
+docker run -d --name haxball-billiards --env-file .env haxball-billiards
+```
+
+_You get an error like `docker: Error response from daemon: Conflict. The container name "/haxball-billiards" is already in use by container`_ ?
+
+Remove the container first and try again:
+
+```sh
+docker rm haxball-billiards
+```
+
+##### **Get the room link**
+
+You can see the container logs with:
+
+```sh
+# -f means persistent (wait for new logs until you press Ctrl^C)
+# --tail 1000 to show only the latest 1000 lines
+docker logs -f haxball-billiards --tail 1000
+```
+
+##### **Stop the container**
+
+This will close the room and stop the container.
+
+```sh
+docker stop haxball-billiards
+```
+
+##### **Restart the container**
+
+Open the room again after the container was stopped.
+
+```sh
+docker start haxball-billiards
+```
+
+If you get an `Error: Invalid Token Provided!` you need to remove the container and recreate it with a new token.
+
+##### **Remove the container**
+
+Clean the container. You can recreate it with the run command.
+
+```sh
+docker rm haxball-billiards
+
+# If the room is open you can close it, stop and remove the container
+docker rm haxball-billiards --force
+```
+
+#### Backend API
 
 This bot uses a backend API to get and store statistics (commands `!stats`, `!me` & `!game`).
 

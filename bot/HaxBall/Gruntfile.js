@@ -42,14 +42,35 @@ module.exports = function(grunt) {
         src: concatDev,
         dest: concatDev,
         options: {
-          replacements: [replacement('ENV', 'dev'), replaceApiSecret],
+          replacements: [
+            replacement('ENV', 'dev'),
+            replacement('BUILD', 'headless'),
+            replacement('TOKEN', process.env['TOKEN']),
+            replaceApiSecret
+          ],
+        },
+      },
+      'dev-node': {
+        src: concatDev,
+        dest: concatDev,
+        options: {
+          replacements: [
+            replacement('ENV', 'dev'),
+            replacement('BUILD', 'node'),
+            replacement('TOKEN', process.env['TOKEN']),
+            replaceApiSecret
+          ],
         },
       },
       prod: {
         src: concatProd,
         dest: concatProd,
         options: {
-          replacements: [replacement('ENV', 'prod'), replaceApiSecret],
+          replacements: [
+            replacement('ENV', 'prod'),
+            replacement('BUILD', 'node'),
+            replaceApiSecret
+          ],
         },
       },
     },
@@ -109,6 +130,7 @@ module.exports = function(grunt) {
 
   // Dev tasks
   grunt.registerTask('dev', ['concat:dev', 'string-replace:dev', 'log:dev']);
+  grunt.registerTask('dev-node', ['concat:dev', 'string-replace:dev-node', 'log:dev']);
   grunt.registerTask('dev-maps', ['maps', 'dev']);
   grunt.registerTask('clear', ['clean:all']);
 
@@ -148,6 +170,16 @@ function commands(exec, echo = true) {
   return cmds.join(' && ');
 }
 
-function replacement(key, value) {
-  return { pattern: '$' + key, replacement: value };
+function replacement(key, value, stringOnly = true) {
+  const keyVariable = escapeRegex('$' + key);
+
+  const regex = stringOnly ? `(')${keyVariable}'|(")${keyVariable}"|(\`)${keyVariable}\`` : keyVariable;
+
+  const replacement = stringOnly ? `$1${escapeRegex(value)}$1` : escapeRegex(value);
+
+  return { pattern: new RegExp(regex, 'g'), replacement };
+}
+
+function escapeRegex(s) {
+  return s.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
 }

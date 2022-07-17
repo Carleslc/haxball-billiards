@@ -156,9 +156,9 @@ class Line {
         x = this.center.x;
         y = this.center.y;
       } else if (this.isVertical()) {
-        ({ x, y } = this.#intersectVertical(line));
+        ({ x, y } = this.__intersectVertical(line));
       } else if (line.isVertical()) {
-        ({ x, y } = line.#intersectVertical(this));
+        ({ x, y } = line.__intersectVertical(this));
       } else {
         // y = m*x + b,  y = m'*x + b'  =>  m*x + b = m'*x + b'  =>  x*(m - m') = b' - b
         // x = (b' - b) / (m - m')  =>  x = (b' - b) / ((my / mx) - (my' / mx'))
@@ -178,7 +178,7 @@ class Line {
     return undefined;
   }
 
-  #intersectVertical(line) {
+  __intersectVertical(line) {
     // x = center.x,  y = m'*x + b'
     let x, y;
 
@@ -493,6 +493,8 @@ function isDeclared(variable) {
 
 // HTTP
 
+const FETCH = BUILD === 'node' ? require('node-fetch') : window.fetch;
+
 function fetchWrap(method, url, body = undefined, auth = undefined) {
   const params = {
     method,
@@ -507,7 +509,7 @@ function fetchWrap(method, url, body = undefined, auth = undefined) {
     params.headers['Authorization'] = `Bearer ${auth}`;
   }
 
-  return fetch(url, params)
+  return FETCH(url, params)
     .then((response) => {
       if (!response.ok) {
         return Promise.reject(response);
@@ -591,10 +593,10 @@ class Logger {
     console.debug(...msg);
   }
   warn(...msg) {
-    console.warn(...msg);
+    console.warn('⚠️', ...msg);
   }
   error(...msg) {
-    console.error(...msg);
+    console.error('❌', ...msg);
   }
 }
 

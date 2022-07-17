@@ -1,0 +1,12 @@
+# Ignore everything
+*
+
+# Allow exceptions
+!/src
+!package*.json
+!Gruntfile.js
+!start.sh
+!.env
+
+# Ignore files inside allowed exceptions
+**/.DS_Store
