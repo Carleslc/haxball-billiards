@@ -789,9 +789,11 @@ function joinStats(totalStats, gameStats) {
 
 /* top */
 
+// HELP.push("🏆 !top {STAT}? ▶️ see the top players of this pub");
+
 function topStats(player, args) {
   if (player.admin) {
-    const stat = args.length > 0 ? args[0].toLowerCase() : 'score';
+    const stat = args.length > 0 ? args[0].toLowerCase() : 'score'; // ELO,score
 
     // TODO map stat names to stat field name, check if is valid and GET top (+ cache, invalidate on gameOver)
   }

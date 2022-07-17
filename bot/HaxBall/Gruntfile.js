@@ -38,7 +38,7 @@ module.exports = function(grunt) {
     },
     // Replace environment variables in the source files
     'string-replace': {
-      dev: {
+      'dev-headless': {
         src: concatDev,
         dest: concatDev,
         options: {
@@ -129,7 +129,7 @@ module.exports = function(grunt) {
   grunt.registerTask('staging', ['concat:prod', 'string-replace:prod', 'log:staging']);
 
   // Dev tasks
-  grunt.registerTask('dev', ['concat:dev', 'string-replace:dev', 'log:dev']);
+  grunt.registerTask('dev', ['concat:dev', 'string-replace:dev-headless', 'log:dev']);
   grunt.registerTask('dev-node', ['concat:dev', 'string-replace:dev-node', 'log:dev']);
   grunt.registerTask('dev-maps', ['maps', 'dev']);
   grunt.registerTask('clear', ['clean:all']);

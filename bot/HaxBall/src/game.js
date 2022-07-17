@@ -564,8 +564,7 @@ function getScore(stats) {
 // [Fargo Ratings - a look under the hood](https://www.facebook.com/notes/349271919741780/)
 function incrementELO() {
   // TODO: Sum ELO of all players for every team weighted by their played time, then
-  // calculate differences with the result of WINNER_TEAM, and
-  // delete team property from player game stats
+  // calculate differences with the result of WINNER_TEAM
 }
 
 function notifyUpdateGameStatistics(data) {
