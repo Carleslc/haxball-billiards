@@ -950,13 +950,13 @@ function kickPlayer(target, reason) {
   }
 }
 
-ADMIN_HELP.push(`👮🏽‍♂️ !kick {PLAYER} {REASON}? ▶️ kick a player out of the room`);
+ADMIN_HELP.push("👮🏽‍♂️ !kick {PLAYER} {REASON}? ▶️ kick a player out of the room");
 
 function kick(player, args) {
   kickban('kick', player, args);
 }
 
-ADMIN_HELP.push(`⛔️ !ban {PLAYER} {REASON}? ▶️ ban a player from joining the room`);
+ADMIN_HELP.push("⛔️ !ban {PLAYER} {REASON}? ▶️ ban a player from joining the room");
 
 function ban(player, args) {
   kickban('ban', player, args);
@@ -964,17 +964,42 @@ function ban(player, args) {
 
 /* clearbans */
 
-ADMIN_HELP.push(`🧹 !clearbans ▶️ clear the list of banned players`);
+ADMIN_HELP.push("🧹 !clearbans ▶️ clear the list of banned players");
 
 function clearbans(player) {
   room.clearBans();
   info('🧹 Floosh! Ban list has been cleared.', player, COLOR.SUCCESS);
 }
 
+/* password */
+
+ADMIN_HELP.push("🔐 !password ▶️ See or change the room password. Use !password open to clear the password.");
+
+function password(player, args) {
+  const newPassword = args.length > 0 && args[0] && args[0] !== PASSWORD;
+
+  if (newPassword) {
+    if (player.admin) {
+      PASSWORD = newPassword === 'open' ? null : newPassword;
+      room.setPassword(PASSWORD);
+    } else {
+      adminOnlyCallback(player);
+    }
+  }
+
+  if (!newPassword || player.admin) {
+    info(passwordInfo(), player, COLOR.SUCCESS, 'normal', newPassword ? LOG.info : LOG.debug);
+  }
+}
+
+function passwordInfo() {
+  return PASSWORD ? `🔐 ${PASSWORD}` : '🔓';
+}
+
 /* discord */
 
 function discord(player) {
-  chatHost('💬🎱 Join to our server: ' + HTTPS_DISCORD, !player || player.admin ? null : player, COLOR.YELLOW);
+  chatHost("💬🎱 Join to our server: " + HTTPS_DISCORD, !player || player.admin ? null : player, COLOR.YELLOW);
 }
 
 function scheduleDiscordReminder() {
@@ -1036,6 +1061,7 @@ const COMMAND_HANDLERS = {
   'kick': adminOnly(kick),
   'ban': adminOnly(ban),
   'clearbans': adminOnly(clearbans),
+  'password': password,
   'discord': discord,
   'bart': bart,
 };

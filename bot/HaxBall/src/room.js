@@ -58,9 +58,15 @@ function init() {
 }
 
 function onRoomLink(url) {
+  if (url.endsWith(WITH_PASSWORD)) {
+    url = url.substring(0, url.length - WITH_PASSWORD.length);
+  }
+
   URL = url;
-  LOG.info(URL);
+
+  LOG.info('👉', URL, passwordInfo());
 }
+
 
 function isPlaying() {
   return !!room.getScores();

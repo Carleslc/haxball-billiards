@@ -12,6 +12,8 @@ const KICK_PADDING = 4; // minimum distance between player border and ball borde
 
 const NOTIFY = 2; // notification sound id
 
+const WITH_PASSWORD = '&p=1';
+
 /* Chat Messages */
 
 const COLOR = {

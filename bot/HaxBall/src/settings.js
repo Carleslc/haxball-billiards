@@ -18,8 +18,9 @@ const PRODUCTION = '$ENV' === 'prod'; // $ENV set with grunt task (dev / prod)
 
 const PUBLIC_ROOM = PRODUCTION;
 
+let PASSWORD = null;
+
 const MAX_PLAYERS = 8;
-const PASSWORD = null;
 const GEOCODE = { code: '', lat: 40.416729, lon: -3.703339 };
 
 const SCORE_LIMIT = 8; // goals to win the game, 0 for infinite
