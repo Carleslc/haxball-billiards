@@ -209,6 +209,7 @@ const BAD_WORDS = (() => {
     "recktum",
     "rectum",
     "retard",
+    "retards",
     "sadist",
     "scank",
     "schlong",
