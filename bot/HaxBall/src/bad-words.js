@@ -473,7 +473,7 @@ const BAD_WORDS = (() => {
     'plla', 'comeme', 'comedme', 'pta', 'puttana', 'putana', 'cagna', 'bastard', 'bastardo', 'perra', 'callate', 'cadela', 'hece',
     'paja', 'pito', 'chupa', 'chupad', 'chupar', 'chupadme', 'chuparme', 'maricon', 'maricone', 'marica', 'marico', 'orto',
     'pelotudo', 'pelotuda', 'verga', 'phuto', 'phuta', 'askeroso', 'ajqueroso', 'askerosa', 'poya', 'cochambroso', 'cochambrosa',
-    'mongol', 'mongolo', 'mongola', 'gordo', 'gorda', 'follen', 'follar',
+    'mongol', 'mongolo', 'mongola', 'gordo', 'gorda', 'follen', 'follar', 'ngger', 'nggr'
   ];
 
   CUSTOM_BAD_WORDS.push(...CUSTOM_BAD_WORDS.map((badWord) => badWord + 's'));
