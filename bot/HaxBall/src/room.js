@@ -55,7 +55,8 @@ async function init() {
   
     setHostRandomAvatar();
   
-    updateTeams();
+    resetGameStatistics();
+    resetCurrentPlayer();
 
     setSchedule();
   } else {
