@@ -9,7 +9,8 @@ const ROOM = "🎱  ⚪️⩴ ⚜️ Billiards Pub ⚜️ 🔴🔵 𓀙      " +
 // FUTURE: Discord bot (game stats + replays, account linking, !stats)
 
 const HOST_ICON = '🤵🏽‍♂️';
-const HOST_PLAYER = HOST_ICON + ' Bart'; // Bartender
+const HOST_NAME = 'Bart'; // Bartender
+const HOST_PLAYER = `${HOST_ICON} ${HOST_NAME}`;
 
 const PRODUCTION = '$ENV' === 'prod'; // $ENV set with grunt task (dev / prod)
 
@@ -23,6 +24,9 @@ const GEOCODE = { code: '', lat: 40.416729, lon: -3.703339 };
 const SCORE_LIMIT = 8; // goals to win the game, 0 for infinite
 const TIME_LIMIT = 0; // max minutes per game, 0 for infinite
 const TEAMS_LOCK = true; // block players from joining teams manually?
+
+const SCHEDULE_FROM = { hour: 16 }; // when the pub opens (UTC), null if forever
+const SCHEDULE_TO = { hour: 6 }; // when the pub closes (UTC), null if never
 
 const LOG_LEVEL_PRODUCTION = 'INFO'; // DEBUG, INFO, WARN, ERROR
 const ENABLE_CHAT_LOG = !PRODUCTION; // LOG_LEVEL.DEBUG

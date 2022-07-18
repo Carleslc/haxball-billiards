@@ -56,6 +56,8 @@ async function init() {
     setHostRandomAvatar();
   
     updateTeams();
+
+    setSchedule();
   } else {
     window.onHBLoaded = init;
   }
@@ -125,23 +127,28 @@ function updateTeams(teams) {
 
 function startGame(delaySeconds = WAIT_GAME_START_SECONDS) {
   if (!PLAYING) {
-    setTeams(true);
-    
-    if (activePlayers().length < 2) {
-      delaySeconds = 0;
-    }
-
-    if (delaySeconds > WAIT_GAME_START_SECONDS) {
-      info(`Next game will start in ${delaySeconds} seconds`);
-    }
-
-    NEXT_GAME_TASK = setTimeout(() => {
-      if (playersInGameLength()) {
-        LOG.debug(getCaller(startGame), "-> startGame");
-        room.startGame();
+    if (isOpen()) {
+      setTeams(true);
+      
+      if (activePlayers().length < 2) {
+        delaySeconds = 0;
       }
+  
+      if (delaySeconds > WAIT_GAME_START_SECONDS) {
+        info(`Next game will start in ${delaySeconds} seconds`);
+      }
+  
+      NEXT_GAME_TASK = setTimeout(() => {
+        if (playersInGameLength()) {
+          LOG.debug(getCaller(startGame), "-> startGame");
+          room.startGame();
+        }
+        NEXT_GAME_TASK = undefined;
+      }, delaySeconds * 1000); 
+    } else if (NEXT_GAME_TASK) {
+      clearTimeout(NEXT_GAME_TASK);
       NEXT_GAME_TASK = undefined;
-    }, delaySeconds * 1000);
+    }
   }
 }
 
@@ -153,6 +160,80 @@ function stopGame() {
 
     room.stopGame();
   }
+}
+
+function setSchedule() {
+  if (SCHEDULE_FROM && SCHEDULE_TO) {
+    const wasOpen = isOpen();
+
+    const now = new Date();
+  
+    NEXT_OPEN = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), SCHEDULE_FROM.hour || 0, SCHEDULE_FROM.minute || 0));
+    NEXT_CLOSE = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), SCHEDULE_TO.hour || 0, SCHEDULE_TO.minute || 0));
+
+    // Set current interval
+    if (NEXT_CLOSE < NEXT_OPEN) {
+      if (now >= NEXT_CLOSE) {
+        NEXT_CLOSE = addDays(NEXT_CLOSE, 1);
+      } else {
+        NEXT_OPEN = addDays(NEXT_OPEN, -1);
+      }
+    }
+
+    // Check if is in the current interval
+    if (NEXT_CLOSE > NEXT_OPEN) {
+      OPEN = now >= NEXT_OPEN && now < NEXT_CLOSE; // opened and still not closed
+    } else {
+      OPEN = true; // full day (NEXT_CLOSE === NEXT_OPEN)
+    }
+
+    // Set next interval
+    if (now >= NEXT_OPEN) {
+      NEXT_OPEN = addDays(NEXT_OPEN, 1);
+    }
+    if (now >= NEXT_CLOSE) {
+      NEXT_CLOSE = addDays(NEXT_CLOSE, 1);
+    }
+
+    // Check if pub should close but is still active (give extra time)
+    EXTRA_HOURS = wasOpen && !OPEN && activePlayers().length > 0;
+
+    LOG.debug('setSchedule', 'OPEN', OPEN, 'NEXT_CLOSE', NEXT_CLOSE, 'NEXT_OPEN', NEXT_OPEN, 'EXTRA_HOURS', EXTRA_HOURS || false);
+
+    if (EXTRA_HOURS) {
+      chatHost([
+        "People, it's time to close. I would like to rest.",
+        "You can still play as long as you're active, but when no one is playing anymore I will close the pub."
+      ]);
+    } else if (wasOpen && !OPEN) {
+      stopGame();
+
+      if (N_PLAYERS) {
+        pubIsClosed(null);
+      }
+    } else if (!PLAYING && !wasOpen && OPEN && N_PLAYERS) {
+      chatHost([
+        "Welcome to the HaxBilliards Pub! 🎱",
+        "The Pub is now open 🍷",
+        "I'm full of energy for some hours of enjoyment, are you? 🙌"
+      ]);
+
+      chooseMap();
+      
+      setTimeout(() => {
+        chatHost(`${N_PLAYERS === 1 ? 'Do you' : 'Anyone'} want a drink? See the !menu`);
+      }, 10*1000);
+    }
+
+    // Schedule next check
+    setTimeout(setSchedule, (OPEN ? NEXT_CLOSE : NEXT_OPEN).getTime() - now.getTime());
+  } else {
+    OPEN = true;
+  }
+}
+
+function isOpen() {
+  return OPEN || EXTRA_HOURS;
 }
 
 /* Room Handlers */

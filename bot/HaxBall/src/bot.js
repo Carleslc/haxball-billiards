@@ -1,5 +1,10 @@
 /* Game Mechanics */
 
+let OPEN; // is the pub open?
+let NEXT_OPEN; // when will the pub open?
+let NEXT_CLOSE; // when will the pub close?
+let EXTRA_HOURS; // should the pub be closed but still cannot be closed by whatever reason?
+
 /** @type {import("haxball-types").Player} */
 let CURRENT_PLAYER; // player
 let CURRENT_TEAM; // team id
@@ -501,6 +506,10 @@ function chooseMap(restart = false) {
     resetRulesVoting();
   }
 
+  if (!isOpen()) {
+    return false;
+  }
+
   const noAfk = activePlayers().length;
 
   if (PLAYING) {
@@ -524,6 +533,9 @@ function chooseMap(restart = false) {
       }
     }
     return true;
+  } else if (NEXT_GAME_TASK && !isOpen()) {
+    clearTimeout(NEXT_GAME_TASK);
+    NEXT_GAME_TASK = undefined;
   } else {
     LOG.debug('Already starting a game');
   }
@@ -904,6 +916,11 @@ function onGameStop(byPlayer) {
       }
     }
   }
+
+  if (EXTRA_HOURS && !activePlayers().length) {
+    EXTRA_HOURS = false;
+    pubIsClosed(null);
+  }
 }
 
 let MOVE_ORDER = 0;
@@ -1120,7 +1137,7 @@ function infoInactive(player) {
 }
 
 function incrementAFK(player) {
-  if (PLAYING && !GAME_OVER && player.team !== TEAM.SPECTATOR && N_PLAYERS > 1) {
+  if (PLAYING && !GAME_OVER && player.team !== TEAM.SPECTATOR && (N_PLAYERS > 1 || EXTRA_HOURS)) {
     if (CURRENT_PLAYER && player.id === CURRENT_PLAYER.id) {
       const afkSeconds = ++AFK_TIME[player.id];
       if (afkSeconds === AFK_PLAYING_SECONDS - AFK_SECONDS_WARNING) {
@@ -1166,22 +1183,30 @@ function onPlayerJoin(player) {
 
   warn(`The bot of this room is in ${VERSION} version, please be patient if something breaks or does not work as expected.`, player);
 
-  chatHost(`Welcome ${player.name} to the HaxBilliards Pub 🎱`);
+  const open = isOpen();
+  
+  if (open) {
+    chatHost(`Welcome ${player.name} to the HaxBilliards Pub 🎱`);
+  } else {
+    pubIsClosed(player);
+  }
 
   restoreDrink(player);
   
   enableAim(player);
 
-  if (BOT_MAP && !chooseMap()) {
+  if (open && BOT_MAP && !chooseMap()) {
     setTeams(true);
   }
 
   resetAFK(player);
 
-  // Send rules after some seconds so the player notices the message
-  setTimeout(() => {
-    info("Send !help for commands or !rules to know how to play", player, COLOR.DEFAULT, 'italic');
-  }, SEND_RULES_HINT_AFTER_SECONDS * 1000);
+  if (open) {
+    // Send rules after some seconds so the player notices the message
+    setTimeout(() => {
+      info("Send !help for commands or !rules to know how to play", player, COLOR.DEFAULT, 'italic');
+    }, SEND_RULES_HINT_AFTER_SECONDS * 1000);
+  }
 }
 
 function onPlayerLeave(player) {

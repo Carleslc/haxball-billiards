@@ -150,6 +150,10 @@ function drinkIcon(drink, drinkMessage = null, def = '🫗') {
 }
 
 function orderDrink(player, drink) {
+  if (!isOpen()) {
+    pubIsClosed(player);
+    return;
+  }
   if (isDrinking(player)) {
     chatHost("Ey! Don't drink too much too fast!", player);
     warn(`Please, wait at least ${WAIT_DRINK_MINUTES} minutes to order another drink.`, player);
@@ -200,6 +204,10 @@ function orderDrink(player, drink) {
 }
 
 function menu(player) {
+  if (!isOpen()) {
+    pubIsClosed(player);
+    return;
+  }
   info(DRINK_MENU, player);
 }
 
@@ -224,6 +232,10 @@ const AVAILABLE_MAPS = Object.keys(MAPS).map(m => m.toLowerCase()).join(', ');
 HELP.push(`🔄 !vote [${AVAILABLE_MAPS}] ▶️ change the current map`);
 
 function vote(player, args) {
+  if (!isOpen()) {
+    pubIsClosed(player);
+    return;
+  }
   if (args.length > 0) {
     voteMap(player, args[0]);
   } else {
@@ -350,6 +362,10 @@ HELP.push(`🤖 !setrules [${AVAILABLE_RULESETS}] ▶️ vote the rules to apply
 ADMIN_HELP.push(`🤖 !setrules [${AVAILABLE_RULESETS}] [f, force]? ▶️ vote or set the rules to apply`);
 
 function setVoteRules(player, args) {
+  if (!isOpen()) {
+    pubIsClosed(player);
+    return;
+  }
   if (args.length > 0) {
     const ruleset = args[0];
 
@@ -547,7 +563,7 @@ HELP.push("😴 !afk ▶️ switch between afk / online");
 
 function afk(player) {
   if (isAFK(player)) {
-    resetAFK(player, true, true);
+    resetAFK(player, isOpen(), true);
   } else {
     info(`😴 ${player.name} is AFK`, null, COLOR.INFO, 'bold');
     setAFK(player, true);
@@ -858,6 +874,10 @@ function listPlayers(player) {
 let JOKE_COOLDOWN = false;
 
 function joke(player) {
+  if (!isOpen()) {
+    pubIsClosed(player);
+    return;
+  }
   if (!JOKE_COOLDOWN) {
     JOKE_COOLDOWN = true;
 
@@ -894,6 +914,10 @@ function teams(player, args) {
 ADMIN_HELP.push(`💬 !bart {MESSAGE} ▶️ Talk as ${HOST_PLAYER} (Please, remember he is elegant and very respectful)`);
 
 function bart(player, args) {
+  if (!isOpen()) {
+    pubIsClosed(player);
+    return;
+  }
   if (player.admin) {
     if (args.length > 0) {
       chatHost(joinArgs(args));
@@ -1001,7 +1025,11 @@ function passwordInfo() {
 /* discord */
 
 function discord(player) {
-  chatHost("💬🎱 Join to our server: " + HTTPS_DISCORD, !player || player.admin ? null : player, COLOR.YELLOW);
+  const discordMessage = "💬🎱 Join to our server: " + HTTPS_DISCORD;
+
+  const sendMethod = isOpen() ? chatHost : info;
+
+  sendMethod(discordMessage, !player || player.admin ? null : player, COLOR.YELLOW);
 }
 
 function scheduleDiscordReminder() {
@@ -1068,12 +1096,16 @@ const COMMAND_HANDLERS = {
   'bart': bart,
 };
 
+const DEBUG_LOG_COMMAND_HANDLERS = new Set(['!']); // By default commands are logged as INFO, but these commands will log as DEBUG
+
 Object.keys(DRINKS).forEach(drink => {
   COMMAND_HANDLERS[drink] = (player, _) => orderDrink(player, drink);
 });
 
 for (let kickStrength = 1; kickStrength <= MAX_PLAYER_STRENGTH; kickStrength++) {
-  COMMAND_HANDLERS[String(kickStrength)] = selectStrength;
+  const command = String(kickStrength);
+  DEBUG_LOG_COMMAND_HANDLERS.add(command);
+  COMMAND_HANDLERS[command] = selectStrength;
 }
 
 async function processCommand(player, msg) {
@@ -1086,7 +1118,9 @@ async function processCommand(player, msg) {
     const command = args[0].toLowerCase();
     args.splice(0, 1); // remove command from args
 
-    LOG.info(`${player.name} -> !${command} ${args.join(' ')}`);
+    const log = DEBUG_LOG_COMMAND_HANDLERS.has(command) ? LOG.debug : LOG.info;
+    
+    log(`${player.name} -> !${command} ${args.join(' ')}`);
 
     if (command in COMMAND_HANDLERS) {
       try {
@@ -1147,12 +1181,16 @@ function checkHostReply(player, msg) {
   if (!isHostPlayer(player)) {
     if (N_PLAYERS === 1) {
       setTimeout(() => {
-        chatHost([
-          `Hello, ${player.name}. I'm the bartender bot of this billiards pub.`,
-          `Invite your friends with this link: ${URL}`,
-          `Meanwhile, you can practice your shots on this map or choose another with !vote`,
-          'And you can also order me a drink, see !help for more information'
-        ], player);
+        if (isOpen()) {
+          chatHost([
+            `Hello, ${player.name}. I'm the bartender bot of this billiards pub.`,
+            `Invite your friends with this link: ${URL}`,
+            `Meanwhile, you can practice your shots on this map or choose another with !vote`,
+            'And you can also order me a drink, see !help for more information'
+          ], player);
+        } else {
+          pubIsClosed(player);
+        }
       }, 1000);
     } else if (msg === 'help') {
       info("To know the available commands use !help", player);
@@ -1170,4 +1208,27 @@ function onPlayerChat(player, msg) {
     sendChat(player, msg);
   }
   return false;
+}
+
+function pubIsClosed(player) {
+  if (!isOpen()) {
+    let remainingSeconds = Math.ceil((NEXT_OPEN.getTime() - Date.now()) / 1000);
+
+    if (remainingSeconds < 60) {
+      remainingSeconds = 60; // Avoid "See you in 0m" message
+    }
+
+    const timeRemaining = getDuration(remainingSeconds);
+
+    const openAt = `${SCHEDULE_FROM.hour || 0}:${String(SCHEDULE_FROM.minute || 0).padEnd(2, 0)} UTC`;
+    const closeAt = `${SCHEDULE_TO.hour || 0}:${String(SCHEDULE_TO.minute || 0).padEnd(2, 0)} UTC`;
+  
+    info([
+      `🚪 The Pub is currently closed. It will open again at ${openAt}.`,
+      `🛌 ${HOST_NAME} the bartender is resting.`,
+      `🗓 The Pub hours are everyday from ${openAt} to ${closeAt}.`,
+      `💬 Meanwhile, you can get in touch with other players on the discord: ${HTTPS_DISCORD}`,
+      `🕑 See you in ${timeRemaining}.`
+    ], player, COLOR.DEFAULT, 'bold');
+  }
 }
