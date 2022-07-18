@@ -1380,4 +1380,5 @@ function onStadiumChange(map) {
     CURRENT_MAP_OBJECT = undefined;
     resetCurrentPlayer();
   }
+  resetGameStatistics();
 }

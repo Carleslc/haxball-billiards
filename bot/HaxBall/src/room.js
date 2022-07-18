@@ -55,7 +55,6 @@ async function init() {
   
     setHostRandomAvatar();
   
-    resetGameStatistics();
     resetCurrentPlayer();
 
     setSchedule();
