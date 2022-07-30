@@ -607,14 +607,17 @@ function cachePlayerData(auth, data) {
 }
 
 async function getPlayerStats(player) {
-  const auth = getAuth(player);
+  return await getPlayerStatsByAuth(getAuth(player), player.name);
+}
+
+async function getPlayerStatsByAuth(auth, name = undefined) {
   const playerCache = PLAYERS_DATA[auth];
 
   if (playerCache) {
     return { data: playerCache };
   }
   if (playerCache === null) { // cached 404
-    return { data: getGameStatistics(player) };
+    return { data: getGameStatisticsByAuth(auth) };
   }
   
   try {
@@ -626,8 +629,8 @@ async function getPlayerStats(player) {
   } catch ({ status, error }) {
     if (status === 404) {
       cachePlayerData(auth, null);
-      LOG.debug(player.name, 'is a new player (404)');
-      return { data: getGameStatistics(player) };
+      LOG.debug(name || auth, 'is a new player (404)');
+      return { data: getGameStatisticsByAuth(auth) };
     }
     throw { status, error };
   }
@@ -667,6 +670,47 @@ function getTargetName(player, mention = false) {
   return (mention && player.name) ? player.name.replace(' ', '_') : player.name;
 }
 
+class Stat {
+  constructor(icon, name, transform = (n) => n) {
+    this.icon = icon;
+    this.name = name;
+    this.transform = transform;
+  }
+  get(n) {
+    return `${this.entry(n)} ${this.name.toLowerCase()}`;
+  }
+  entry(n) {
+    return `${this.icon} ${this.transform(n)}`;
+  }
+  toString() {
+    return `${this.icon} ${this.name}`;
+  }
+}
+
+const STATS = {
+  'timePlayed': new Stat('⏳', 'Time Played', timePlayed => getDuration(timePlayed, timePlayed < 3600)), // 3600s = 1h
+  'shots': new Stat('💥', 'Shots'),
+  'misses': new Stat('🌀', 'Misses'),
+  'balls': new Stat('✳️', 'Balls'),
+  'precisionHit': new Stat('🪅', 'Hit Precision', rate),
+  'precisionScore': new Stat('⚜️', 'Score Precision', rate),
+  'fouls': new Stat('❌', 'Fouls'),
+  'whiteBalls': new Stat('⚪️', 'White Fouls'),
+  'games': new Stat('🆚', 'Games'),
+  'winRate': new Stat('🔆', 'Win Rate', rate),
+  'wins': new Stat('🟡', 'Wins'),
+  'losses': new Stat('🔘', 'Losses'),
+  'gamesAbandoned': new Stat('💨', 'Games Abandoned'),
+  'abandonRate': new Stat('😶‍🌫️', 'Surrender Rate', rate),
+  'gamesFinished': new Stat('✅', 'Games Finished'),
+  'winsFinished': new Stat('🏅', 'Wins Finished'),
+  'winRateFinished': new Stat('🔱', 'Win Rate Finished', rate),
+  'blackBalls': new Stat('🎱', 'Black Balls Successfully Scored'),
+  'score': new Stat('🏵', 'Score'),
+  'averageScore': new Stat('〽️', 'Average Score', averageScore => rate(averageScore, { scale: 1, decimals: 1 })),
+  'elo': new Stat('🔰', 'ELO'),
+};
+
 function showStatistics(player, targetPlayer, stats, gameStats = false, displayTotal = true) {
   const samePlayer = targetPlayer.id === player.id;
   let you = samePlayer ? 'You' : targetPlayer.name;
@@ -699,14 +743,6 @@ function showStatistics(player, targetPlayer, stats, gameStats = false, displayT
 
       info(targetPlayer.name, player, color, 'bold');
 
-      const losses = stats.games - stats.gamesAbandoned - stats.wins;
-      const precisionHit = rate(1 - (stats.misses / stats.shots));
-      const precisionScore = rate(stats.balls / stats.shots);
-      const winRate = rate(stats.wins / stats.games);
-      const winRateFinished = rate(stats.winsFinished / stats.gamesFinished);
-      const abandonRate = rate(stats.gamesAbandoned / stats.games);
-      const averageScore = rate(stats.score / stats.games, { scale: 1, decimals: 1 });
-
       const statsMessage = [];
 
       let game = room.getScores();
@@ -728,32 +764,32 @@ function showStatistics(player, targetPlayer, stats, gameStats = false, displayT
 
       const timePlayed = (gameStats && game && stats.timePlayed > game.time) ? game.time : stats.timePlayed;
 
-      statsMessage.push(`⏳ ${getDuration(timePlayed, timePlayed < 3600)} time played`); // 3600s = 1h
-
       statsMessage.push(...[
-        `💥 ${stats.shots} shots`,
-        `🌀 ${stats.misses} misses`,
-        `✳️ ${stats.balls} balls`,
-        `🪅 ${precisionHit} hit precision`,
-        `⚜️ ${precisionScore} score precision`,
-        `❌ ${stats.fouls} fouls`,
-        `⚪️ ${stats.whiteBalls} white fouls`,
+        STATS.timePlayed.get(timePlayed),
+        STATS.shots.get(stats.shots),
+        STATS.misses.get(stats.misses),
+        STATS.balls.get(stats.balls),
+        STATS.precisionHit.get(stats.precisionHit),
+        STATS.precisionScore.get(stats.precisionScore),
+        STATS.fouls.get(stats.fouls),
+        STATS.whiteBalls.get(stats.whiteBalls),
       ]);
 
       if (displayTotal) {
         statsMessage.push(...[
-          `🆚 ${stats.games} games`,
-          `🔆 ${winRate} win rate`,
-          `🟡 ${stats.wins} wins`,
-          `🔘 ${losses} losses`,
-          `💨 ${stats.gamesAbandoned} games abandoned`,
-          `😶‍🌫️ ${abandonRate} surrender rate`,
-          `✅ ${stats.gamesFinished} games finished`,
-          `🏅 ${stats.winsFinished} wins finished`,
-          `🔱 ${winRateFinished} win rate finished`,
-          `🎱 ${stats.blackBalls} black balls successfully scored`,
-          `🏵 ${stats.score} score`,
-          `〽️ ${averageScore} average score`,
+          STATS.games.get(stats.games),
+          STATS.winRate.get(stats.winRate),
+          STATS.wins.get(stats.wins),
+          STATS.losses.get(stats.losses),
+          STATS.gamesAbandoned.get(stats.gamesAbandoned),
+          STATS.abandonRate.get(stats.abandonRate),
+          STATS.gamesFinished.get(stats.gamesFinished),
+          STATS.winsFinished.get(stats.winsFinished),
+          STATS.winRateFinished.get(stats.winRateFinished),
+          STATS.blackBalls.get(stats.blackBalls),
+          STATS.score.get(stats.score),
+          STATS.averageScore.get(stats.averageScore),
+          `${STATS.elo.icon} ${stats.elo} ${STATS.elo.name} (${eloTitle(stats.elo)})`,
         ]);
       }
 
@@ -787,6 +823,28 @@ function showStatistics(player, targetPlayer, stats, gameStats = false, displayT
   }
 }
 
+function eloTitle(elo) {
+  if (elo >= BASE_ELO * 6) {
+    return 'Grand Master';
+  }
+  if (elo >= BASE_ELO * 5) {
+    return 'Master';
+  }
+  if (elo >= BASE_ELO * 4) {
+    return 'Professional';
+  }
+  if (elo >= BASE_ELO * 3) {
+    return 'Profficient';
+  }
+  if (elo >= BASE_ELO * 2) {
+    return 'Intermediate';
+  }
+  if (elo >= BASE_ELO) {
+    return 'Average';
+  }
+  return 'Beginner';
+}
+
 function joinStats(totalStats, gameStats) {
   if (!gameStats) {
     return totalStats;
@@ -805,15 +863,162 @@ function joinStats(totalStats, gameStats) {
 
 /* top */
 
-// HELP.push("🏆 !top {STAT}? ▶️ see the top players of this pub");
+HELP.push("🏆 !top {STAT}? ▶️ see the top players of this pub");
 
-function topStats(player, args) {
-  if (player.admin) {
-    const stat = args.length > 0 ? args[0].toLowerCase() : 'score'; // ELO,score
+const STATS_MAPPING = {
+  'time played': 'timePlayed',
+  'time': 'timePlayed',
+  't': 'timePlayed',
+  'shots': 'shots',
+  'k': 'shots',
+  'sh': 'shots',
+  'misses': 'misses',
+  'm': 'misses',
+  'balls': 'balls',
+  'b': 'balls',
+  'hit': 'precisionHit',
+  'hit precision': 'precisionHit',
+  'score precision': 'precisionScore',
+  'h': 'precisionHit',
+  'hp': 'precisionHit',
+  'ph': 'precisionHit',
+  'sp': 'precisionScore',
+  'ps': 'precisionScore',
+  'p': 'precisionScore',
+  'fouls': 'fouls',
+  'f': 'fouls',
+  'white fouls': 'whiteBalls',
+  'white balls': 'whiteBalls',
+  'wf': 'whiteBalls',
+  'wb': 'whiteBalls',
+  'games': 'games',
+  'g': 'games',
+  'win rate': 'winRate',
+  'winrate': 'winRate',
+  'wr': 'winRate',
+  'w/r': 'winRate',
+  'wins': 'wins',
+  'w': 'wins',
+  'losses': 'losses',
+  'l': 'losses',
+  'games abandoned': 'gamesAbandoned',
+  'abandoned': 'gamesAbandoned',
+  'a': 'gamesAbandoned',
+  'surrender': 'abandonRate',
+  'surrender rate': 'abandonRate',
+  'abandon rate': 'abandonRate',
+  'abandon': 'abandonRate',
+  'ar': 'abandonRate',
+  'sr': 'abandonRate',
+  'games finished': 'gamesFinished',
+  'gf': 'gamesFinished',
+  'wins finished': 'winsFinished',
+  'wf': 'winsFinished',
+  'win rate finished': 'winRateFinished',
+  'wrf': 'winRateFinished',
+  'w/r finished': 'winRateFinished',
+  'black balls': 'blackBalls',
+  'black balls successfully scored': 'blackBalls',
+  'bb': 'blackBalls',
+  'score': 'score',
+  's': 'score',
+  'average score': 'averageScore',
+  'average': 'averageScore',
+  'avg': 'averageScore',
+  'as': 'averageScore',
+  'elo': 'elo',
+  'e': 'elo',
+};
 
-    // TODO map stat names to stat field name, check if is valid and GET top (+ cache, invalidate on gameOver)
+const DEFAULT_TOP_SORT = 'elo,score';
+
+async function topStats(player, args) {
+  let sort;
+
+  if (args.length > 0) {
+    const stat = joinArgs(args).toLowerCase();
+
+    if (stat in STATS_MAPPING) {
+      sort = STATS_MAPPING[stat];
+    } else {
+      warn(`Stat ${stat} does not exist. See !stats`, player);
+    }
+  } else {
+    sort = DEFAULT_TOP_SORT;
   }
-  comingSoon(player);
+
+  if (sort) {
+    try {
+      const { sort: sortFields, players } = await getTopPlayers(sort);
+      showTop(player, sortFields, players);
+    } catch (e) {
+      if (e.status) {
+        displayHttpError(`Cannot get top players`, e.status, e.error, player);
+      } else {
+        displayError(`Cannot show top players`, e, player);
+      }
+    }
+  }
+}
+
+function showTop(player, sort, players) {
+  let topHeader = "🏆 TOP";
+
+  if (sort in STATS) {
+    topHeader += ` ${STATS[sort]}`;
+  }
+
+  info(topHeader, player, COLOR.NOTIFY, 'bold');
+
+  const sortStats = sort.split(',');
+
+  const top = [];
+
+  for (let i = 0; i < players.length; i++) {
+    const topPlayer = players[i];
+
+    let topEntry = `${getPosition(i + 1)} ${topPlayer.name}`;
+
+    for (let sortStat of sortStats) {
+      topEntry += ' ' + STATS[sortStat].entry(topPlayer[sortStat]);
+    }
+
+    top.push(topEntry);
+  }
+
+  info(top.join('\n'), player, COLOR.NOTIFY);
+}
+
+function getPosition(i) {
+  if (i === 1) {
+    return '🥇';
+  }
+  if (i === 2) {
+    return '🥈';
+  }
+  if (i === 3) {
+    return '🥉';
+  }
+  return `${i}.`;
+}
+
+async function getTopPlayers(sort) {
+  if (sort in TOP_PLAYERS) {
+    const players = TOP_PLAYERS[sort];
+    return { top: players.length, sort, players };
+  }
+
+  const { data: { top, sort: sortFields, players } } = await GET(GET_TOP_URL, { sort });
+
+  TOP_PLAYERS[sortFields] = players;
+
+  return { top, sort: sortFields, players };
+}
+
+function invalidateTopPlayersCache() {
+  Object.keys(TOP_PLAYERS).forEach(statField => {
+    delete TOP_PLAYERS[statField];
+  });
 }
 
 /* spin */
@@ -1164,7 +1369,7 @@ async function sendChat(player, msg) {
 
   try {
     const { data } = await getPlayerStats(player);
-    label = `🏵 ${(data && data.score) || 0}`;
+    label = `${STATS.elo.entry((data && data.elo) || BASE_ELO)} ${STATS.score.entry((data && data.score) || 0)}`;
   } catch (e) {
     if (e.status) {
       displayHttpError(`Cannot get ${player.name} statistics`, e.status, e.error, player);

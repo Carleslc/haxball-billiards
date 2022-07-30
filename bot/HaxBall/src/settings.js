@@ -25,7 +25,7 @@ const SCORE_LIMIT = 8; // goals to win the game, 0 for infinite
 const TIME_LIMIT = 0; // max minutes per game, 0 for infinite
 const TEAMS_LOCK = true; // block players from joining teams manually?
 
-const SCHEDULE_FROM = { hour: 16 }; // when the pub opens (UTC), null if forever
+const SCHEDULE_FROM = { hour: 14 }; // when the pub opens (UTC), null if forever
 const SCHEDULE_TO = { hour: 6 }; // when the pub closes (UTC), null if never
 
 const LOG_LEVEL_PRODUCTION = 'INFO'; // DEBUG, INFO, WARN, ERROR
@@ -77,6 +77,7 @@ const API_ENV = PRODUCTION ? 'live' : 'test';
 
 const GET_PLAYER_URL = `https://api.buildable.dev/flow/v1/call/${API_ENV}/get-player-005eb6db18/`;
 const UPDATE_PLAYERS_STATISTICS_URL = `https://api.buildable.dev/flow/v1/call/${API_ENV}/add-players-statistics-5315a377f8/`;
+const GET_TOP_URL = `https://api.buildable.dev/flow/v1/call/${API_ENV}/top-players-b7b1083a4b`;
 
 const DRINKS = {
   water: ["🧊💧 There you go, a glass of fresh water.", "💧🥤 You are thirsty, I see!", "💧 Yeah, a cup of water is the best for a good billiards game.", "💧 Yes! You have to be hydrated for a billiards match."],

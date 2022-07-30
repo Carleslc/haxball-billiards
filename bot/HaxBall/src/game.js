@@ -416,7 +416,7 @@ function shotsInfo() {
   }
 }
 
-function updateGameOverPlayersStatistics() {
+async function updateGameOverPlayersStatistics() {
   if (GAME_PLAYER_STATISTICS_UPDATED) {
     return;
   }
@@ -432,9 +432,6 @@ function updateGameOverPlayersStatistics() {
     if (game && stats.timePlayed > game.time) {
       stats.timePlayed = Math.trunc(game.time);
     }
-
-    // Remove fields that we don't want to be in the DB
-    delete stats.team;
   });
 
   if ((!BLACK_SCORED_TEAM || !game || game.time >= 60) && USING_RULESET !== 'DISABLE') {
@@ -491,7 +488,7 @@ function updateGameOverPlayersStatistics() {
     const playing = playersInGame().map(getAuth);
 
     // Add a game played to all players that played in this game
-    playersStats.forEach((auth) => {
+    for (let auth of playersStats) {
       const stats = GAME_PLAYER_STATISTICS[auth];
 
       if (stats) {
@@ -507,11 +504,19 @@ function updateGameOverPlayersStatistics() {
 
         // Calculate the score increment for this player
         stats.score = getScore(stats);
+
+        // Calculate the derived statistics
+        await setComputedStatistics(auth, stats);
       }
-    });
+    }
 
     // Calculate the ELO increment for all players that played in this game
-    incrementELO();
+    incrementELO(playing);
+
+    // Remove fields that we don't want in the DB
+    Object.values(GAME_PLAYER_STATISTICS).forEach(stats => {
+      delete stats.team;
+    });
 
     // Update statistics for all players that played in this game
     postUpdatePlayerStatistics(notifyUpdateGameStatistics);
@@ -521,7 +526,7 @@ function updateGameOverPlayersStatistics() {
 }
 
 function postUpdatePlayerStatistics(callback) {
-  POST(UPDATE_PLAYERS_STATISTICS_URL, {
+  return POST(UPDATE_PLAYERS_STATISTICS_URL, {
     set: GAME_PLAYER_FIELDS,
     inc: GAME_PLAYER_STATISTICS,
   })
@@ -535,7 +540,8 @@ function postUpdatePlayerStatistics(callback) {
   })
   .catch((e) => {
     LOG.error('Cannot update players statistics', e);
-  });
+  })
+  .finally(invalidateTopPlayersCache);
 }
 
 function trackGame(players) {
@@ -543,7 +549,11 @@ function trackGame(players) {
 }
 
 function getGameStatistics(player) {
-  return GAME_PLAYER_STATISTICS[getAuth(player)];
+  return getGameStatisticsByAuth(getAuth(player));
+}
+
+function getGameStatisticsByAuth(auth) {
+  return GAME_PLAYER_STATISTICS[auth];
 }
 
 function getScore(stats) {
@@ -560,11 +570,164 @@ function getScore(stats) {
   return games*2 + gamesFinished*3 - gamesAbandoned*3 + wins*2 + winsFinished*3 + blackBalls*2 + balls - fouls;
 }
 
+function getComputedStatistics(stats) {
+  return {
+    losses: stats.games - stats.gamesAbandoned - stats.wins,
+    precisionHit: 1 - (stats.misses / stats.shots),
+    precisionScore: stats.balls / stats.shots,
+    winRate: stats.wins / stats.games,
+    winRateFinished: stats.winsFinished / stats.gamesFinished,
+    abandonRate: stats.gamesAbandoned / stats.games,
+    averageScore: stats.score / stats.games,
+  };
+}
+
+async function setComputedStatistics(auth, gameStats) {
+  const gamePlayerFields = GAME_PLAYER_FIELDS[auth];
+
+  const { data } = await getPlayerStatsByAuth(auth);
+  
+  const isNewPlayer = !PLAYERS_DATA[auth];
+  const afterStats = { ...data };
+  
+  if (!isNewPlayer) {
+    for (let stat of Object.keys(gameStats)) {
+      afterStats[stat] += gameStats[stat];
+    }
+  }
+
+  const computedStats = getComputedStatistics(afterStats);
+
+  for (let stat of Object.keys(computedStats)) {
+    gamePlayerFields[stat] = computedStats[stat];
+  }
+}
+
 // [Elo Rating System](https://en.wikipedia.org/wiki/Elo_rating_system)
 // [Fargo Ratings - a look under the hood](https://www.facebook.com/notes/349271919741780/)
-function incrementELO() {
-  // TODO: Sum ELO of all players for every team weighted by their played time, then
-  // calculate differences with the result of WINNER_TEAM
+// Initial ELO guess: BASE_ELO + (0.5*(BASE_ELO/10) * winsFinished) - (0.5*(BASE_ELO/10) * (gamesFinished - winsFinished))
+// This ELO system is similar to chess FIDE, with same K coefficients, but with BASE_ELO of 500 instead of FIDE 400
+function incrementELO(playing) {
+  if (WINNER_TEAM) {
+    // Sum ELO of all players for every team weighted by their played time, then
+    // calculate ELO differences with the result of WINNER_TEAM
+    let redELO = 0;
+    let blueELO = 0;
+    let redPlayers = 0;
+    let bluePlayers = 0;
+    let redTimePlayed = 0;
+    let blueTimePlayed = 0;
+
+    const playersStats = {}; // { elo, gamesFinished, ... }
+    const playersGameStats = Object.keys(GAME_PLAYER_STATISTICS);
+
+    for (let auth of playersGameStats) {
+      const gameStats = GAME_PLAYER_STATISTICS[auth];
+      playersStats[auth] = PLAYERS_DATA[auth] || {};
+
+      const weightedELO = (playersStats[auth].elo || BASE_ELO) * gameStats.timePlayed;
+
+      if (gameStats.team === TEAM.RED) {
+        redELO += weightedELO;
+        redTimePlayed += gameStats.timePlayed;
+        redPlayers++;
+      } else if (gameStats.team === TEAM.BLUE) {
+        blueELO += weightedELO;
+        blueTimePlayed += gameStats.timePlayed;
+        bluePlayers++;
+      }
+    }
+
+    // weighted sum
+    redELO /= redTimePlayed || 1;
+    blueELO /= blueTimePlayed || 1;
+
+    // average ELO
+    redELO /= redPlayers || 1;
+    blueELO /= bluePlayers || 1;
+
+    LOG.debug('ELO:', 'RED', redELO, 'BLUE', blueELO);
+
+    for (let auth of playersGameStats) {
+      const gameStats = GAME_PLAYER_STATISTICS[auth];
+      const playerStats = playersStats[auth];
+
+      let teamELO; // average player's team ELO
+      let opponentELO; // average opponent's team ELO
+
+      if (gameStats.team === TEAM.RED) {
+        teamELO = redELO;
+        opponentELO = blueELO;
+      } else if (gameStats.team === TEAM.BLUE) {
+        teamELO = blueELO;
+        opponentELO = redELO;
+      }
+
+      let winnerStats, loserStats;
+
+      if (playing.includes(auth)) {
+        if (gameStats.team === WINNER_TEAM) {
+          winnerStats = { elo: teamELO, gamesFinished: playerStats.gamesFinished };
+          loserStats = { elo: opponentELO };
+        } else {
+          winnerStats = { elo: opponentELO };
+          loserStats = { elo: teamELO, gamesFinished: playerStats.gamesFinished };
+        }
+
+        const [eloChangeWinner, eloChangeLoser] = eloRatingChange(winnerStats, loserStats);
+
+        if (gameStats.team === WINNER_TEAM) {
+          gameStats.elo = eloChangeWinner;
+        } else {
+          gameStats.elo = eloChangeLoser;
+        }
+      } else {
+        // Abandoned games count as losses for ELO
+        winnerStats = { elo: opponentELO };
+        loserStats = playerStats;
+
+        const [_, eloChangeLoser] = eloRatingChange(winnerStats, loserStats);
+
+        gameStats.elo = eloChangeLoser;
+      }
+    }
+  }
+}
+
+function eloRatio(elo, power = 10) {
+  return power ** (elo / BASE_ELO);
+}
+
+// Probability of winning a match between two players
+function eloExpectedWinRatio(eloA, eloB, power = 10) {
+  const ratioA = eloRatio(eloA, power);
+  const ratioB = eloRatio(eloB, power);
+  const expectedA = ratioA / (ratioA + ratioB);
+  const expectedB = ratioB / (ratioA + ratioB);
+  return [expectedA, expectedB];
+}
+
+// Similar to FIDE K factor, but different BASE_ELO (500 vs FIDE 400)
+function eloK(stats) {
+  if ((stats.gamesFinished || 0) < 30) {
+    return BASE_ELO / 10;
+  }
+  if ((stats.elo || BASE_ELO) < 6 * BASE_ELO) {
+    return BASE_ELO / 20;
+  }
+  return BASE_ELO / 40;
+}
+
+/** A is winner (+), B is loser (-) */
+function eloRatingChange(statsA, statsB, power = 10) {
+  const eloA = statsA.elo || BASE_ELO;
+  const eloB = statsB.elo || BASE_ELO;
+  const kA = eloK(statsA);
+  const kB = eloK(statsB);
+  const [expectedA, expectedB] = eloExpectedWinRatio(eloA, eloB, power);
+  const changeA = Math.round(kA * (1 - expectedA));
+  const changeB = Math.round(-kB * expectedB);
+  return [changeA, changeB];
 }
 
 function notifyUpdateGameStatistics(data) {
@@ -591,8 +754,12 @@ function notifyUpdateGameStatistics(data) {
     .filter(([_player, gameStats]) => !!gameStats)
     .sort(([_p1, stats1], [_p2, stats2]) => -(stats1.score - stats2.score)) // descending
     .forEach(([player, gameStats]) => {
-      info(`${player.name} ${gameStats.score >= 0 ? '+' : ''}${gameStats.score} 🏵`, null, getColor(gameStats.score)); // TODO: 🔰 ELO
+      info(`${player.name} ${plusStatString(STATS.score.icon, gameStats.score)} ${plusStatString(STATS.elo.icon, gameStats.elo)}`, null, getColor(gameStats.elo || gameStats.score));
     });
+}
+
+function plusStatString(icon, stat) {
+  return `${stat >= 0 ? '+' : ''}${stat} ${icon}`;
 }
 
 function incrementStatistics(player, ...statistics) {

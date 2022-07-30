@@ -145,6 +145,8 @@ const PLAYER_DATA_TYPE = {
 /** @type {Object.<string, PLAYER_DATA_TYPE>} */
 let PLAYERS_DATA = {}; // player auth to player data cache
 
+let TOP_PLAYERS = {}; // stat field to [{ player stats }]
+
 // Rules settings
 
 class Rule {

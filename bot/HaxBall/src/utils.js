@@ -383,7 +383,7 @@ const DIGIT_CHAR_MAPPING = {
   '6': 'g',
   '7': 't',
   '8': 'o',
-  '9': 'u',
+  '9': 'g',
 };
 
 function normalizeCharacters(s, digitsToChar = false) {
@@ -533,7 +533,11 @@ function fetchWrap(method, url, body = undefined, auth = undefined) {
     });
 }
 
-function GET(url, auth = API_SECRET) {
+function GET(url, query = {}, auth = API_SECRET) {
+  const httpQuery = Object.entries(query).map(([param, value]) => `${param}=${encodeURIComponent(value)}`).join('&');
+  if (httpQuery) {
+    url += `?${httpQuery}`;
+  }
   return fetchWrap('GET', url, null, auth);
 }
 
