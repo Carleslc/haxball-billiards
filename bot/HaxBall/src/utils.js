@@ -39,7 +39,7 @@ function normalizeDistance(x, minX, a, maxX, b) {
 }
 
 function fixNan(n, replacement = '-') {
-  return isNaN(n) ? replacement : n;
+  return (typeof n !== 'number' || isNaN(n)) ? replacement : n;
 }
 
 function roundDecimals(n, decimals = 0) {
