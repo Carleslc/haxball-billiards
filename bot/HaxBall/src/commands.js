@@ -834,7 +834,7 @@ function eloTitle(elo) {
     return 'Professional';
   }
   if (elo >= BASE_ELO * 3) {
-    return 'Profficient';
+    return 'Proficient';
   }
   if (elo >= BASE_ELO * 2) {
     return 'Intermediate';
