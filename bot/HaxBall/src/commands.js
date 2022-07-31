@@ -765,30 +765,30 @@ function showStatistics(player, targetPlayer, stats, gameStats = false, displayT
       const timePlayed = (gameStats && game && stats.timePlayed > game.time) ? game.time : stats.timePlayed;
 
       statsMessage.push(...[
-        STATS.timePlayed.get(timePlayed),
-        STATS.shots.get(stats.shots),
-        STATS.misses.get(stats.misses),
-        STATS.balls.get(stats.balls),
-        STATS.precisionHit.get(stats.precisionHit),
-        STATS.precisionScore.get(stats.precisionScore),
-        STATS.fouls.get(stats.fouls),
-        STATS.whiteBalls.get(stats.whiteBalls),
+        STATS.timePlayed.get(timePlayed || 0),
+        STATS.shots.get(stats.shots || 0),
+        STATS.misses.get(stats.misses || 0),
+        STATS.balls.get(stats.balls || 0),
+        STATS.precisionHit.get(stats.precisionHit || 0),
+        STATS.precisionScore.get(stats.precisionScore || 0),
+        STATS.fouls.get(stats.fouls || 0),
+        STATS.whiteBalls.get(stats.whiteBalls || 0),
       ]);
 
       if (displayTotal) {
         statsMessage.push(...[
-          STATS.games.get(stats.games),
-          STATS.winRate.get(stats.winRate),
-          STATS.wins.get(stats.wins),
-          STATS.losses.get(stats.losses),
-          STATS.gamesAbandoned.get(stats.gamesAbandoned),
-          STATS.abandonRate.get(stats.abandonRate),
-          STATS.gamesFinished.get(stats.gamesFinished),
-          STATS.winsFinished.get(stats.winsFinished),
-          STATS.winRateFinished.get(stats.winRateFinished),
-          STATS.blackBalls.get(stats.blackBalls),
-          STATS.score.get(stats.score),
-          STATS.averageScore.get(stats.averageScore),
+          STATS.games.get(stats.games || 0),
+          STATS.winRate.get(stats.winRate || 0),
+          STATS.wins.get(stats.wins || 0),
+          STATS.losses.get(stats.losses || 0),
+          STATS.gamesAbandoned.get(stats.gamesAbandoned || 0),
+          STATS.abandonRate.get(stats.abandonRate || 0),
+          STATS.gamesFinished.get(stats.gamesFinished || 0),
+          STATS.winsFinished.get(stats.winsFinished || 0),
+          STATS.winRateFinished.get(stats.winRateFinished || 0),
+          STATS.blackBalls.get(stats.blackBalls || 0),
+          STATS.score.get(stats.score || 0),
+          STATS.averageScore.get(stats.averageScore || 0),
           `${STATS.elo.icon} ${stats.elo} ${STATS.elo.name} (${eloTitle(stats.elo)})`,
         ]);
       }
