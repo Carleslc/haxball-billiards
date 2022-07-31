@@ -573,12 +573,12 @@ function getScore(stats) {
 function getComputedStatistics(stats) {
   return {
     losses: stats.games - stats.gamesAbandoned - stats.wins,
-    precisionHit: 1 - (stats.misses / stats.shots),
-    precisionScore: stats.balls / stats.shots,
-    winRate: stats.wins / stats.games,
-    winRateFinished: stats.winsFinished / stats.gamesFinished,
-    abandonRate: stats.gamesAbandoned / stats.games,
-    averageScore: stats.score / stats.games,
+    precisionHit: 1 - (stats.misses / (stats.shots || 1)),
+    precisionScore: stats.balls / (stats.shots || 1),
+    winRate: stats.wins / (stats.games || 1),
+    winRateFinished: stats.winsFinished / (stats.gamesFinished || 1),
+    abandonRate: stats.gamesAbandoned / (stats.games || 1),
+    averageScore: stats.score / (stats.games || 1),
   };
 }
 
