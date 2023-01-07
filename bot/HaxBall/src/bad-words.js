@@ -2,7 +2,6 @@
 const BAD_WORDS = (() => {
   const badWords = [
     // Modified from https://github.com/web-mech/badwords/blob/master/lib/lang.json
-    "ano",
     "ahole",
     "anus",
     "ash0le",
