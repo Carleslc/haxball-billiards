@@ -2,7 +2,9 @@
 
 [![ko-fi](https://www.ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/carleslc)
 
-[HaxBall](https://www.haxball.com/play)
+## Play
+
+👉 **https://www.haxball.com/play?c=FxdYxlFi_dk**
 
 ### **[HaxBilliards Discord](https://discord.gg/z6pH3hEWsf)**
 
