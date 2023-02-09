@@ -4,7 +4,7 @@
 
 ## Play
 
-👉 **https://www.haxball.com/play?c=FxdYxlFi_dk**
+👉 **https://www.haxball.com/play?c=bf0gFFalDdg**
 
 ### **[HaxBilliards Discord](https://discord.gg/z6pH3hEWsf)**
 
